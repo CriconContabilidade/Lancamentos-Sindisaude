@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lançamentos Sindisaúde</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --ink:#1A1A1A;
+  --ink-soft:#65656B;
+  --paper:#E7E6E2;
+  --paper-raised:#FFFFFF;
+  --rule:#D6D5D1;
+  --rule-strong:#A9A7A2;
+  --red:#A6392C;
+  --red-bg:#F6E1DC;
+  --green-ink:#1F5E3C;
+  --green-bg:#DEEEE3;
+  --amber:#8A6400;
+  --amber-bg:#FCEEA9;
+  --accent:#2B4C7E;
+  --accent-bg:#DDE6F2;
+  --shadow: 0 1px 2px rgba(0,0,0,0.06), 0 4px 14px rgba(0,0,0,0.06);
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'IBM Plex Sans',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.app{max-width:1280px;margin:0 auto;padding:28px 20px 80px;}
+
+.topbar{padding-bottom:18px;margin-bottom:22px;border-bottom:2px solid var(--ink);display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;}
+.brand h1{font-family:'Source Serif 4',serif;font-size:26px;font-weight:800;margin:0 0 4px;letter-spacing:-0.01em;}
+.brand .sub{font-size:13px;color:var(--ink-soft);max-width:640px;}
+.backlink{font-size:12.5px;color:var(--ink-soft);text-decoration:none;border-bottom:1px dotted var(--ink-soft);}
+.backlink:hover{color:var(--ink);}
+.cricon-brand{display:flex;align-items:center;gap:8px;}
+.cricon-brand svg{width:28px;height:auto;flex-shrink:0;}
+.cricon-brand .cw{line-height:1.05;text-align:right;}
+.cricon-brand .cw .nm{font-family:'Source Serif 4',serif;font-style:italic;font-weight:700;font-size:14px;color:#5D4232;white-space:nowrap;}
+.cricon-brand .cw .tg{font-family:'IBM Plex Sans',sans-serif;font-size:9px;color:var(--ink-soft);letter-spacing:.02em;white-space:nowrap;}
+
+.card{background:var(--paper-raised);border:1.5px solid var(--ink);border-radius:6px;box-shadow:var(--shadow);padding:20px;margin-bottom:20px;}
+
+.dropzone{border:2px dashed var(--rule-strong);border-radius:6px;padding:28px 14px;text-align:center;cursor:pointer;transition:background .15s,border-color .15s;}
+.dropzone:hover,.dropzone.drag{background:rgba(0,0,0,0.03);border-color:var(--ink);}
+.dropzone .big{font-size:13.5px;font-weight:600;margin-bottom:4px;}
+.dropzone .small{font-size:11.5px;color:var(--ink-soft);}
+.dropzone.done{border-style:solid;border-color:var(--green-ink);background:var(--green-bg);}
+.dropzone.small-drop{padding:16px;}
+input[type=file]{display:none;}
+
+.field-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px;}
+.field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:4px;font-family:'IBM Plex Mono',monospace;}
+
+.btn{padding:9px 16px;border-radius:4px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer;font-weight:600;font-size:13.5px;transition:transform .08s ease,opacity .15s;font-family:'IBM Plex Sans',sans-serif;}
+.btn:hover{opacity:.88;}
+.btn:active{transform:translateY(1px);}
+.btn.ghost{background:transparent;color:var(--ink);}
+.btn.ghost:hover{background:rgba(0,0,0,0.06);}
+.btn.small{padding:5px 10px;font-size:12px;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+
+.status-line{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink-soft);margin-top:10px;white-space:pre-wrap;}
+.status-line.err{color:var(--red);}
+.status-line.ok{color:var(--green-ink);}
+
+.summary-row{display:flex;gap:18px;flex-wrap:wrap;margin:14px 0;font-size:13px;}
+.summary-row .item .k{color:var(--ink-soft);font-size:11px;text-transform:uppercase;letter-spacing:.03em;font-family:'IBM Plex Mono',monospace;}
+.summary-row .item .v{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:16px;}
+
+table.preview{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+table.preview th{text-align:left;padding:7px 8px;border-bottom:1.5px solid var(--rule-strong);font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);position:sticky;top:0;background:var(--paper-raised);white-space:nowrap;}
+table.preview th.sortable{cursor:pointer;user-select:none;}
+table.preview th.sortable:hover{color:var(--ink);}
+table.preview th.sortable .arrow{color:var(--accent);}
+.table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.table-toolbar input[type=search]{flex:1;max-width:320px;padding:7px 9px;border:1.5px solid var(--rule-strong);border-radius:4px;font-size:13px;font-family:'IBM Plex Sans',sans-serif;background:var(--paper-raised);color:var(--ink);}
+.table-toolbar input[type=search]:focus{outline:none;border-color:var(--ink);}
+.table-toolbar .count{font-size:11.5px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+table.preview td{padding:6px 8px;border-bottom:1px solid var(--rule);vertical-align:top;}
+table.preview td.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+table.preview tr.flag{background:var(--amber-bg);}
+.table-wrap{max-height:520px;overflow:auto;border:1px solid var(--rule);border-radius:4px;}
+.cell-input{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:3px 5px;border:1.5px solid transparent;border-radius:3px;background:transparent;width:100%;min-width:70px;color:var(--ink);}
+.cell-input:hover{border-color:var(--rule-strong);}
+.cell-input:focus{outline:none;border-color:var(--ink);background:var(--paper-raised);}
+.cell-input.num{text-align:right;font-weight:600;}
+.cell-input.wide{min-width:190px;}
+td.cell{padding:2px 4px;}
+
+.hidden{display:none !important;}
+.section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin:0 0 12px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
+.help{font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:14px;}
+.help b{color:var(--ink);}
+footer{margin-top:30px;font-size:11.5px;color:var(--ink-soft);text-align:center;}
+code{background:var(--paper);padding:1px 5px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <h1>Lançamentos Sindisaúde</h1>
+      <div class="sub">Lê o extrato Sicoob do Sindisaúde e gera as linhas de razão pro Domínio (Data/Débito/Crédito/Valor/Histórico), casando cada lançamento contra um cadastro editável de padrões. O que não bate com nenhum padrão cadastrado vira uma linha só com a conta banco, pra completar à mão — ferramenta ainda em montagem, cadastro cresce aos poucos.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+      <a class="backlink" href="https://criconcontabilidade.github.io/Cricon-Ferramentas/" onclick="window.close(); setTimeout(function(){ location.href='https://criconcontabilidade.github.io/Cricon-Ferramentas/'; }, 250); return false;" id="hubLink">← Hub de Ferramentas</a>
+      <div class="cricon-brand">
+        <svg viewBox="0 0 141 109" xmlns="http://www.w3.org/2000/svg"><path d="M 15.33 33.25 L 9.50 52.58 L 11.33 74.33 L 19.08 90.67 L 36.17 102.92 L 57.25 104.92 L 73.25 100.08 L 84.92 104.83 L 100.25 104.83 L 115.75 97.92 L 126.00 85.67 L 129.92 74.17 L 130.25 61.92 L 60.92 62.08 L 62.42 49.00 L 130.58 48.75 L 129.92 37.75 L 126.75 29.75 L 118.33 20.33 L 111.42 16.33 L 97.92 12.75 L 88.58 12.67 L 72.58 18.17 L 59.83 13.67 L 41.33 13.58 L 26.42 20.42 Z M 78.58 93.58 L 86.00 80.08 L 86.00 78.42 L 87.00 77.08 L 87.00 74.33 L 87.92 72.75 L 88.33 69.50 L 120.42 69.42 L 121.00 69.92 L 121.08 74.17 L 120.17 75.42 L 120.08 77.17 L 119.25 78.25 L 119.25 79.58 L 117.33 83.67 L 115.83 85.17 L 114.75 87.33 L 111.33 90.75 L 109.25 91.75 L 108.08 92.92 L 102.33 95.92 L 100.33 96.00 L 98.50 97.00 L 85.58 97.00 L 84.42 96.00 L 82.58 95.92 Z M 62.33 69.50 L 78.42 69.42 L 79.25 70.08 L 79.25 70.92 L 78.33 72.58 L 78.33 74.25 L 77.42 75.42 L 77.42 77.00 L 76.50 78.25 L 76.58 79.67 L 76.00 80.33 L 75.58 81.67 L 74.92 82.33 L 74.67 83.58 L 73.92 84.33 L 73.58 85.50 L 71.67 87.58 L 71.17 87.50 L 70.75 87.00 L 69.92 86.67 L 69.00 85.25 L 66.75 82.83 L 66.25 81.42 L 63.83 77.00 L 63.75 75.25 L 62.83 74.17 L 62.83 71.67 L 61.92 70.58 L 61.92 69.92 Z M 20.17 69.75 L 20.58 69.42 L 52.00 69.67 L 52.83 70.58 L 53.17 72.50 L 54.08 73.67 L 54.17 75.50 L 55.08 76.50 L 55.00 78.17 L 56.00 80.75 L 59.67 86.42 L 60.00 87.83 L 61.58 89.33 L 61.83 90.58 L 63.50 92.33 L 63.42 93.75 L 62.58 94.83 L 61.33 95.08 L 60.33 96.00 L 58.42 96.08 L 57.42 97.00 L 43.83 97.00 L 42.58 96.00 L 41.00 96.00 L 39.75 95.08 L 38.42 95.08 L 36.25 94.08 L 34.75 92.67 L 30.33 90.25 L 26.67 86.50 L 26.42 85.33 L 23.08 81.00 L 22.83 79.08 L 21.00 76.25 L 20.92 73.83 L 20.00 72.50 Z M 19.08 50.08 L 20.42 49.00 L 51.83 49.08 L 52.33 49.58 L 52.25 55.25 L 51.42 57.83 L 51.42 61.17 L 50.67 61.83 L 18.58 61.83 L 18.08 61.33 L 18.08 58.58 L 19.08 56.17 Z M 72.67 28.83 L 75.50 31.67 L 76.58 33.58 L 77.42 34.58 L 77.58 36.42 L 78.42 37.50 L 78.33 38.92 L 79.33 40.33 L 79.25 41.00 L 78.50 41.42 L 65.25 41.33 L 64.67 40.58 L 64.58 39.67 L 65.42 38.50 L 65.67 37.42 L 66.42 36.50 L 66.58 35.50 L 68.00 33.92 L 68.50 32.58 L 72.00 29.00 Z M 80.17 23.67 L 81.50 22.33 L 82.75 22.00 L 83.75 21.17 L 85.50 21.08 L 86.58 20.17 L 99.25 20.17 L 100.33 21.08 L 103.00 21.17 L 104.25 22.08 L 107.75 23.08 L 109.42 24.67 L 112.67 26.00 L 117.08 30.42 L 120.17 35.50 L 120.17 37.00 L 121.17 38.50 L 121.08 40.83 L 120.42 41.42 L 88.50 41.42 L 87.92 40.67 L 87.92 38.33 L 86.92 36.92 L 86.92 34.50 L 86.17 33.75 L 84.75 30.33 L 80.75 25.42 Z M 64.58 23.67 L 63.33 26.33 L 61.08 28.58 L 60.67 29.83 L 59.17 31.33 L 58.75 32.75 L 57.33 34.33 L 56.08 37.00 L 55.92 38.33 L 55.08 39.25 L 55.08 40.75 L 54.42 41.42 L 22.58 41.50 L 22.17 41.17 L 22.92 39.42 L 22.83 38.42 L 26.83 31.42 L 33.17 25.17 L 41.00 21.17 L 43.58 21.08 L 44.75 20.17 L 57.50 20.17 L 58.92 21.00 L 60.83 21.17 L 63.08 22.17 Z" fill="#5D4232" fill-rule="evenodd"/></svg>
+        <div class="cw"><div class="nm">Contabilidade Cricon</div><div class="tg">Contabilizando seu sucesso!</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LANÇAMENTOS CONTÁBEIS ===================== -->
+  <div class="card">
+    <div class="section-title">Extrato Sicoob → Lançamentos</div>
+    <div class="help">Carregue o extrato mensal (PDF, formato "Data · Descrição · Documento · Valor · Saldo"). Cada linha é casada contra o cadastro de padrões abaixo pelo texto do histórico; o que não bate com nada vira uma linha só com a conta banco (10) preenchida, pra completar à mão.</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Extrato Sicoob (PDF)</label>
+        <div class="dropzone small-drop" id="extratoLancDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Extrato mensal de movimento</div><input type="file" id="extratoLancFile" accept="application/pdf"></div>
+      </div>
+      <div class="field">
+        <label>Extrato de Aplicação (PDF, opcional)</label>
+        <div class="dropzone small-drop" id="evolutivoDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Evolutivo ou Automático (reconhece sozinho) — só pro lançamento de Rendimentos, um por vez</div><input type="file" id="evolutivoFile" accept="application/pdf"></div>
+      </div>
+      <div class="field">
+        <label>Livro Diário CaixaW (PDF, opcional)</label>
+        <div class="dropzone small-drop" id="livroDiarioDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Sistema interno do cliente — usado só pra sugerir a categoria das linhas sem padrão</div><input type="file" id="livroDiarioFile" accept="application/pdf"></div>
+      </div>
+      <div class="field">
+        <label>Código Emp. (Domínio)</label>
+        <input type="text" id="lancCodEmp" value="" style="padding:7px 9px;border:1.5px solid var(--rule-strong);border-radius:4px;font-size:13.5px;font-family:'IBM Plex Mono',monospace;background:var(--paper-raised);color:var(--ink);width:100%;">
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn" id="processLancBtn" disabled onclick="processarLancamentos()">Processar</button></div>
+    <div id="lancStatus" class="status-line hidden"></div>
+  </div>
+
+  <div class="card hidden" id="resultLancCard"></div>
+
+  <!-- ===================== CADASTRO: LANÇAMENTOS PADRÕES ===================== -->
+  <div class="card">
+    <div class="section-title">Cadastro — Lançamentos Padrões</div>
+    <div class="help">De-para de palavra-chave (do histórico do extrato) → contas de débito/crédito. Deixe Débito ou Crédito em branco pra usar só a conta banco (10) nesse lado, com o outro em branco pra completar à mão. Marque "Ignorar" pra excluir do lançamento. Clique em "+ Novo padrão" pra adicionar mais regras.</div>
+    <div class="table-wrap"><table class="preview" id="padroesTable"></table></div>
+    <div class="btn-row">
+      <button class="btn" onclick="addPadraoRow()">+ Novo padrão</button>
+      <button class="btn ghost" onclick="togglePadroesJson()">Editar via JSON</button>
+    </div>
+    <div id="padroesJsonBox" class="hidden" style="margin-top:10px;">
+      <div class="help">Pra um histórico calculado a partir do texto original da linha (ex. incluir o CNPJ/nome que vêm embutidos na descrição), use <code>histFn:"nomeDaFuncao"</code> em vez de <code>hist</code> — a função precisa existir no código, dentro de <code>HIST_FUNCOES</code> (peça pro Claude adicionar uma nova se precisar).</div>
+      <textarea id="padroesJsonArea" style="width:100%;min-height:220px;font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px;border:1.5px solid var(--rule-strong);border-radius:4px;"></textarea>
+      <div class="btn-row"><button class="btn small" onclick="salvarPadroesJson()">Salvar</button></div>
+      <div id="padroesJsonStatus" class="status-line hidden"></div>
+    </div>
+  </div>
+
+  <!-- ===================== CADASTRO: REPASSES ACC ===================== -->
+  <div class="card">
+    <div class="section-title">Cadastro — Repasses ACC (Asilo São Vicente de Paulo / Hospital São José)</div>
+    <div class="help">Recebimentos via Pix pro CPF de cada funcionário — sempre D263 C10 (Asilo) ou D268 C10 (Hospital), histórico "PAGAMENTO REF. REPASSE ACC {ASILO/HOSPITAL} ... PARC. N PARA {NOME}". A parcela é POR PESSOA (uma pode estar mais adiantada que outra) e incrementa sozinha a cada mês processado com sucesso — corrija manualmente "Última Parcela" se pular um mês ou reprocessar. "Grupo" define qual convenção usar (<code>asilo</code> ou <code>hospital</code>). Clique em "+ Nova pessoa" pra adicionar alguém novo confirmado pelo usuário.</div>
+    <div class="table-toolbar"><input type="search" placeholder="Filtrar por CPF ou nome..." oninput="repassesAccFiltro=this.value; renderRepassesTable();"></div>
+    <div class="table-wrap"><table class="preview" id="repassesAccTable"></table></div>
+    <div class="btn-row"><button class="btn" onclick="addRepasseAcc()">+ Nova pessoa</button></div>
+  </div>
+
+  <footer>Lançamentos Sindisaúde · Cricon Contabilidade — uso interno</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+/* Navegação por teclado (padrão em todas as ferramentas): dentro de uma
+   tabela editável, seta cima/baixo e Enter movem o foco para o mesmo campo
+   (mesma coluna) na linha anterior/seguinte, como no Excel. */
+document.addEventListener("keydown", function(e){
+  if(e.key!=="ArrowUp" && e.key!=="ArrowDown" && e.key!=="Enter") return;
+  const alvo = e.target;
+  if(!alvo.matches || !alvo.matches("input, select, textarea")) return;
+  if(alvo.tagName==="TEXTAREA" && e.key==="Enter") return;
+  const celula = alvo.closest("td, th");
+  if(!celula) return;
+  const linha = celula.parentElement;
+  const indiceCelula = Array.prototype.indexOf.call(linha.children, celula);
+  const corpo = linha.parentElement;
+  const linhas = Array.prototype.filter.call(corpo.children, l => l.tagName==="TR");
+  const indiceLinha = linhas.indexOf(linha);
+  const linhaAlvo = e.key==="ArrowUp" ? linhas[indiceLinha-1] : linhas[indiceLinha+1];
+  if(!linhaAlvo) return;
+  const celulaAlvo = linhaAlvo.children[indiceCelula];
+  if(!celulaAlvo) return;
+  const campo = celulaAlvo.querySelector("input, select, textarea");
+  if(!campo) return;
+  e.preventDefault();
+  campo.focus();
+  if(campo.select) campo.select();
+});
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+/* =========================================================================
+   HELPERS: valores / datas / download (mesma lógica das outras ferramentas do Hub)
+   ========================================================================= */
+function parseBRL(str){
+  if(str==null) return null;
+  str = String(str).trim();
+  if(str==="" || str==="-" || str==="–") return null;
+  const neg = /^-/.test(str) || /^\(.*\)$/.test(str);
+  str = str.replace(/[()\-]/g,"").replace(/R\$/g,"").replace(/\s+/g,"").replace(/\./g,"").replace(",",".").trim();
+  const n = parseFloat(str);
+  if(isNaN(n)) return null;
+  return neg ? -n : n;
+}
+function fmtBRL(n){
+  if(n==null || isNaN(n)) return "";
+  return n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtDateBR(dt){ if(!dt) return ""; return `${String(dt.d).padStart(2,"0")}/${String(dt.m).padStart(2,"0")}/${dt.y}`; }
+function brParts(str){
+  const m = String(str).trim().match(/^(\d{2})\/(\d{2})\/(\d{2,4})$/);
+  if(!m) return null;
+  let [_,dd,mm,yy] = m;
+  if(yy.length===2) yy = (parseInt(yy)>50 ? "19":"20")+yy;
+  return {y:parseInt(yy), m:parseInt(mm), d:parseInt(dd)};
+}
+function partsToDate(dt){ return new Date(Date.UTC(dt.y, dt.m-1, dt.d)); }
+function downloadText(filename, content, mime){
+  const blob = new Blob([content], {type: mime||"text/plain;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function downloadTextAnsi(filename, content){
+  const bytes = new Uint8Array(content.length);
+  for(let i=0;i<content.length;i++){
+    const code = content.charCodeAt(i);
+    bytes[i] = code <= 0xFF ? code : 0x3F; // '?' pra qualquer caractere fora do Latin-1
+  }
+  const blob = new Blob([bytes], {type:"text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function downloadXlsx(filename, rowsAoA, sheetName){
+  const ws = XLSX.utils.aoa_to_sheet(rowsAoA);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName||"Sheet1");
+  XLSX.writeFile(wb, filename);
+}
+function stripAccents(s){ return String(s??"").normalize("NFD").replace(/[̀-ͯ]/g,""); }
+function normalizeText(s){
+  return (s||"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().trim();
+}
+function onlyDigits(s){ return (s||"").toString().replace(/\D/g,""); }
+function formatCnpjCpf(raw){
+  const d = onlyDigits(raw);
+  if(d.length===14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  if(d.length===11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  return (raw||"").toString().trim();
+}
+function wireDropzone(dropId, inputId, onFile){
+  const drop = document.getElementById(dropId);
+  const input = document.getElementById(inputId);
+  drop.addEventListener("click", ()=>input.click());
+  input.addEventListener("change", ()=>{ if(input.files[0]) onFile(input.files[0], drop); });
+  drop.addEventListener("dragover", e=>{ e.preventDefault(); drop.classList.add("drag"); });
+  drop.addEventListener("dragleave", ()=> drop.classList.remove("drag"));
+  drop.addEventListener("drop", e=>{
+    e.preventDefault(); drop.classList.remove("drag");
+    if(e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0], drop);
+  });
+}
+function markDropDone(drop, label){
+  drop.classList.add("done");
+  drop.querySelector(".big").textContent = "✓ " + label;
+}
+function makeTableState(){ return {filter:"", sortCol:null, sortDir:1}; }
+function sortValue(v){ return v && typeof v==="object" && "y" in v ? partsToDate(v).getTime() : v; }
+function filterSortRows(rows, state, getSearchable){
+  let indexed = rows.map((row,idx)=>({row, idx}));
+  const needle = normalizeText((state.filter||"").trim());
+  if(needle) indexed = indexed.filter(({row})=> getSearchable(row).some(v=>normalizeText(String(v??"")).includes(needle)));
+  if(state.sortCol){
+    indexed.sort((a,b)=>{
+      const va = sortValue(a.row[state.sortCol]), vb = sortValue(b.row[state.sortCol]);
+      if(va==null && vb==null) return 0;
+      if(va==null) return 1;
+      if(vb==null) return -1;
+      if(typeof va === "number" && typeof vb === "number") return (va-vb)*state.sortDir;
+      return String(va).localeCompare(String(vb), "pt-BR", {numeric:true})*state.sortDir;
+    });
+  }
+  return indexed;
+}
+function toggleSort(state, col, rerenderFn){
+  if(state.sortCol===col){ state.sortDir *= -1; } else { state.sortCol = col; state.sortDir = 1; }
+  rerenderFn();
+}
+function sortTh(stateVarName, state, col, label, rerenderFnName){
+  const arrow = state.sortCol===col ? `<span class="arrow">${state.sortDir===1?"▲":"▼"}</span>` : "";
+  return `<th class="sortable" onclick="toggleSort(${stateVarName},'${col}',${rerenderFnName})">${label} ${arrow}</th>`;
+}
+
+/* ---- PDF: extração de linhas de texto (agrupadas por Y, ordenadas por X) ---- */
+async function extractPdfPageLines(pdf, pageNum){
+  const page = await pdf.getPage(pageNum);
+  const content = await page.getTextContent();
+  const rows = {};
+  content.items.forEach(it=>{
+    const y = Math.round(it.transform[5]);
+    if(!rows[y]) rows[y] = [];
+    rows[y].push({x:it.transform[4], text:it.str});
+  });
+  const ys = Object.keys(rows).map(Number).sort((a,b)=>b-a);
+  return ys.map(y => rows[y].sort((a,b)=>a.x-b.x).map(it=>it.text).join(" ").replace(/\s+/g," ").trim());
+}
+async function extractPdfAllLines(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  const pages = [];
+  for(let p=1;p<=pdf.numPages;p++) pages.push(await extractPdfPageLines(pdf, p));
+  return pages;
+}
+
+/* =========================================================================
+   PARSER — extrato Sicoob Sindisaúde, formato de linha única:
+   "DD/MM/YYYY Descrição [Documento] Valor(R$) Saldo(R$)"
+   Cada linha do extrato já traz o valor com sinal (negativo = débito).
+   ========================================================================= */
+const LINHA_RE = /^(\d{2})\/(\d{2})\/(\d{4})\s+(.+?)\s+(-?[\d.]*\d,\d{2})\s+(-?[\d.]*\d,\d{2})$/;
+async function parseExtratoSindisaudeTodos(file){
+  const pages = await extractPdfAllLines(file);
+  const allLines = pages.flat();
+  const linhas = [];
+  allLines.forEach(line=>{
+    const m = line.match(LINHA_RE);
+    if(!m) return;
+    const [, dd, mm, yyyy, historico, valorStr] = m;
+    linhas.push({
+      data: {y:parseInt(yyyy), m:parseInt(mm), d:parseInt(dd)},
+      historico: historico.trim(),
+      valor: parseBRL(valorStr),
+    });
+  });
+  return linhas;
+}
+// Extrai CNPJ/CPF + nome embutidos no meio do histórico (sem separador, ex.
+// "34460239000166MDT SERVICO PIXCOBRAN") — pega o primeiro run de 11 ou 14
+// dígitos e o texto logo depois, tirando os códigos de canal que aparecem
+// no fim (PIX_DEB/PIX_CRED/PIXCOBRAN).
+function extrairCnpjNome(historico){
+  const m = String(historico||"").match(/(\d{14}|\d{11})(.*)$/);
+  if(!m) return {cnpjcpf:null, nome:null};
+  let nome = m[2].replace(/\s*(PIX_DEB|PIX_CRED|PIX_CRE|PIXCOBRAN)\s*$/,"").trim();
+  return {cnpjcpf:m[1], nome: nome || null};
+}
+
+/* ---- Cadastro: Lançamentos Padrões (de-para palavra-chave → contas) ---- */
+const PADROES_SEED = [
+  // Recebimento de boletos avulsos liquidados em lote — o extrato só traz o número
+  // do lote (COB0000XX), sem CNPJ/nome do pagador, por isso o histórico fica genérico.
+  {keywords:["LIQ.COBRANCA SIMPLES"], debito:10, credito:62, hist:"RECEBIMENTO REF. TAXA NEGOCIAL", ignorar:false},
+  // Cobrança híbrida (Pix + boleto) — a descrição já traz o CNPJ/CPF e o nome do
+  // pagador embutidos sem separador (ex. "(I) 34460239000166MDT SERVICO"), por isso
+  // usa histFn em vez de hist fixo.
+  {keywords:["RECEB. COB HIBRIDA"], debito:10, credito:62, histFn:"taxaNegocialComNome", ignorar:false},
+  // Recebimentos PIX avulsos que também são taxa negocial — identificados pelo
+  // CPF/CNPJ (não dá pra usar um texto genérico tipo "RECEBIMENTO PIX", porque essa
+  // categoria também inclui repasses grandes de outra natureza, ex. ASSOC.MANT A HOSP,
+  // INSTITUTO M S D E). Acrescente aqui o CPF/CNPJ (só dígitos) de cada novo pagador
+  // confirmado pelo usuário.
+  {keywords:["37717685949","48272124904","06793619950","09208529983","00750073000109"], debito:10, credito:62, histFn:"taxaNegocialComNome", ignorar:false},
+  // Repasse da Mantenedora Timbé do Sul pra funcionários — identificado pelo CNPJ,
+  // igual aos padrões de taxa negocial acima (RECEBIMENTO PIX também tem outras
+  // origens que não seguem essa regra).
+  {keywords:["07447710000103"], debito:10, credito:264, hist:"RECEBIMENTO DE VALORES A REPASSAR DA MANTENEDORA TIMBÉ DO SUL PARA FUNCIONÁRIOS", ignorar:false},
+  // Exceção do aluguel de salão (regra seguinte) — mesmo CNPJ recebendo R$200,00,
+  // mas é estorno de assinatura paga indevidamente, não aluguel. Fica ANTES da
+  // regra genérica de R$200,00 pra ser conferida primeiro.
+  {keywords:["RECEBIMENTO PIX 02724492000193"], debito:10, credito:100, histFn:"estornoSulOnline", ignorar:false},
+  // Pagamento mensal do boleto de internet da Sul Online (débito) — não confundir
+  // com o recebimento do estorno acima (padrão diferente, mesmo CNPJ).
+  {keywords:["LIQUIDACAO BOLETO 02724492000193"], debito:100, credito:10, histFn:"internetSulOnline", ignorar:false},
+  // Recebimentos PIX de R$200,00 — aluguel do salão de festas (pessoa física, nome
+  // vem embutido no histórico). Âncora por valor porque o texto "RECEBIMENTO PIX"
+  // sozinho também cobre repasses institucionais grandes (ver padrão acima).
+  {keywords:["RECEBIMENTO PIX"], valorIgual:200.00, debito:10, credito:58, histFn:"aluguelSalaoFestas", ignorar:false},
+  // Mesmo tratamento do aluguel do salão de festas acima, mas de valor diferente
+  // (R$2.500,00) — por isso ancorado por CNPJ em vez de valor.
+  {keywords:["RECEBIMENTO PIX 03907818000180"], debito:10, credito:58, histFn:"aluguelSalaoFestas", ignorar:false},
+  // Aluguel do quiosque da sede do Campestre — recebimentos PIX de R$60,00.
+  {keywords:["RECEBIMENTO PIX"], valorIgual:60.00, debito:10, credito:64, histFn:"aluguelQuiostaCampestre", ignorar:false},
+  // Corrigido: no relatório antigo do cliente (livro diário CaixaW ProSind), esses
+  // saques aparecem como "Cheque a compensar", mesmo tratamento dos cheques de
+  // fornecedor — não é saque simples pro caixa.
+  {keywords:["SAQUE DIN AG"], debito:148, credito:10, histFn:"compensacaoCheque", ignorar:false},
+  {keywords:["TARIFA SERV.COBR.TITULOS"], debito:49, credito:10, hist:"PAGAMENTO REF. TARIFA DE EMISSÃO DE BOLETOS", ignorar:false},
+  {keywords:["TARIFA LIQUIDACAO PIXCOB"], debito:49, credito:10, hist:"PAGAMENTO REF. TARIFA DE RECEBIMENTO DE PIX POR BOLETO", ignorar:false},
+  {keywords:["CUSTAS DE PROTESTO"], debito:103, credito:10, hist:"PAGAMENTO REF. CUSTAS DE PROTESTO", ignorar:false},
+  {keywords:["TARIFA DE PROTESTO"], debito:103, credito:10, hist:"PAGAMENTO REF. TARIFA DE PROTESTO", ignorar:false},
+  {keywords:["PASSAGEM PEDAGIO"], debito:102, credito:10, histFn:"pedagio", ignorar:false},
+  {keywords:["00658236997"], debito:104, credito:10, histFn:"faxineiraLimpezaSede", ignorar:false},
+  {keywords:["76935213991"], debito:169, credito:10, histFn:"assessoriaImprensa", ignorar:false},
+  // Excluído da automação a pedido do usuário — não entra no lançamento.
+  {keywords:["57065825000101"], debito:null, credito:null, hist:"", ignorar:true},
+  {keywords:["41762579000107"], debito:244, credito:10, hist:"PAGAMENTO REF. VALE TRANSPORTE DOS FUNCIONÁRIOS", ignorar:false},
+  {keywords:["37919090000129"], debito:99, credito:10, histFn:"telefoneMesAnterior", ignorar:false},
+  {keywords:["08336783000190"], debito:267, credito:10, histFn:"energiaCelescSedes", ignorar:false},
+  {keywords:["60563731000177"], debito:66, credito:10, hist:"PAGAMENTO REF. MENSALIDADE DA CUT", ignorar:false},
+  {keywords:["08561701000101"], valorIgual:27500.00, debito:153, credito:10, histFn:"garrafasPersonalizadas", parcelaState:{ultimaParcela:0, totalParcelas:6}, ignorar:false},
+  {keywords:["83646653000170"], debito:267, credito:10, histFn:"energiaCooperaliancaRecreativa", ignorar:false},
+  {keywords:["75565499000183"], debito:66, credito:10, histFn:"convenioSindHospitais", ignorar:false},
+  {keywords:["05411125979","91223270963","07613542980","02332119930","07293411944"], debito:269, credito:10, histFn:"gratificacaoAgenteSindicalizacao", ignorar:false},
+  {keywords:["01004788000177"], valorIgual:500.00, debito:172, credito:10, hist:"PAGAMENTO REF. LOCAÇÃO DE COPIADORA SEDE E SUBSEDE", ignorar:false},
+  {keywords:["67139485000170"], debito:66, credito:10, hist:"PAGAMENTO REF. ANUIDADE CNTS 2026", ignorar:false},
+  {keywords:["02317956967"], debito:237, credito:10, histFn:"verbaReuniaoConselheiroFiscal", ignorar:false},
+  {keywords:["07991146000195"], debito:266, credito:10, hist:"PAGAMENTO REF. DESPESAS COM CONVÊNIO OBSERVATÓRIO SAÚDE DO TRABALHADOR", ignorar:false},
+  {keywords:["07469809000106"], debito:100, credito:10, histFn:"internetBandaturbo", ignorar:false},
+  {keywords:["52154298000198"], debito:117, credito:10, hist:"PAGAMENTO REF. SISTEMA DE WHATSAPP - MAURO ATILA DE CARVALHO MIRANDA", ignorar:false},
+  {keywords:["20377147000102"], debito:77, credito:10, histFn:"musicaFestaPosse", ignorar:false},
+  {keywords:["33258398000110"], debito:41, credito:10, histFn:"buffetFestaPosse", ignorar:false},
+  {keywords:["81329047000103"], debito:86, credito:10, histFn:"mensalidadeSindes", ignorar:false},
+  {keywords:["26603609000149"], debito:100, credito:10, histFn:"provedorNetworkOrdem", ignorar:false},
+  {keywords:["82508433000117"], debito:78, credito:10, histFn:"aguaCasanSedes", ignorar:false},
+  {keywords:["02558157000162"], debito:100, credito:10, histFn:"internetVivoSedes", ignorar:false},
+  {keywords:["82568221000125"], debito:78, credito:10, histFn:"aguaSubsedeSamae", ignorar:false},
+  // Aplicação automática (sweep diário) e sua variante "aviso prévio" (mesmo produto,
+  // rótulo diferente no extrato quando é uma aplicação maior/avulsa) — mesmo lançamento.
+  {keywords:["APLICACAO FINANCEIRA CAPTACAO","APLIC.FINANC.AVISO PREVIO CAPTACAO"], debito:108, credito:10, hist:"VALOR REF. APLICAÇÃO FINANCEIRA - SICREDINVEST EVOLUTIVO", ignorar:false},
+  {keywords:["RESG.APLIC.FIN.AVISO PREV CAPTACAO"], debito:10, credito:108, hist:"VALOR REF. RESGATE DE APLICAÇÃO FINANCEIRA - SICREDINVEST EVOLUTIVO", ignorar:false},
+  {keywords:["CHEQUE COMPE SICREDI"], debito:148, credito:10, histFn:"compensacaoCheque", ignorar:false},
+  // Reembolso de cartório pro Reginaldo — identificado pelo relatório antigo do
+  // cliente (recibo 751677); ancorado por CPF+valor porque esse mesmo CPF também
+  // recebe por outros motivos (Bistek/Hyper Graf, via baixa de entradas).
+  {keywords:["76342000930"], valorIgual:49.30, debito:103, credito:10, hist:"PAGAMENTO REF. CUSTAS E EMOLUMENTOS CARTORÁRIOS", ignorar:false},
+  // Boleto sem CNPJ/texto na descrição — identificado pelo relatório antigo do
+  // cliente como seguro do veículo Boxer placa MGL7939. Sem nada pra extrair da
+  // linha do extrato, hist fixo mesmo (ancorado só pelo valor).
+  {keywords:["LIQUIDACAO BOLETO"], valorIgual:504.99, debito:61, credito:10, hist:"PAGAMENTO REF. SEGURO BOXER MGL7939", ignorar:false},
+  {keywords:["97526100059"], debito:266, credito:10, histFn:"convenioOdontologico", ignorar:false},
+  // Pagamento indevido pra Sul Online que voltou no mesmo dia via estorno (já
+  // cadastrado) — mesmo tratamento de "pagamento de internet" do lado que saiu.
+  {keywords:["PAGAMENTO PIX 02724492000193"], debito:100, credito:10, histFn:"internetSulOnlinePix", ignorar:false},
+  // Recebimentos que financiam os repasses ACC (contrapartida das entidades
+  // mantenedoras) — parcela própria, ver nota em HIST_FUNCOES.recebimentoRepasseAcc.
+  {keywords:["83871178000135"], debito:10, credito:262, histFn:"recebimentoRepasseAcc", programaNome:"ASILO SÃO VICENTE DE PAULO", parcelaState:{ultimaParcela:15}, ignorar:false},
+  {keywords:["28700530000242"], debito:10, credito:264, histFn:"recebimentoRepasseAcc", programaNome:"MANTENEDORA TIMBÉ DO SUL", parcelaState:{ultimaParcela:14}, ignorar:false},
+  {keywords:["92736040000890"], debito:10, credito:268, histFn:"recebimentoRepasseAcc", programaNome:"HOSPITAL SAO JOSE", parcelaState:{ultimaParcela:4}, ignorar:false},
+  // Mensalidade (taxa negocial) — mesmo padrão do início, só faltava esse CNPJ/CPF.
+  {keywords:["28700530000838"], debito:10, credito:62, histFn:"taxaNegocialComNome", ignorar:false},
+  {keywords:["05886070966"], valorIgual:500.00, debito:10, credito:62, histFn:"taxaNegocialComNome", ignorar:false},
+];
+function loadPadroes(){
+  const raw = localStorage.getItem("sindisaude_lancamentos_padroes");
+  const salvo = raw ? JSON.parse(raw) : [];
+  const chaves = new Set(salvo.map(p=>(p.keywords||[]).join("|")));
+  const novos = PADROES_SEED.filter(p=>!chaves.has((p.keywords||[]).join("|"))).map(p=>({...p}));
+  const combinado = [...salvo, ...novos];
+  if(novos.length) savePadroes(combinado);
+  return combinado;
+}
+function savePadroes(list){ localStorage.setItem("sindisaude_lancamentos_padroes", JSON.stringify(list)); }
+let padroesDB = loadPadroes();
+function renderPadroesTable(){
+  const tbl = document.getElementById("padroesTable");
+  tbl.innerHTML = `<thead><tr>
+      <th>Palavras-chave (separadas por vírgula)</th><th>Débito</th><th>Crédito</th><th>Histórico</th><th>Ignorar</th><th></th>
+    </tr></thead><tbody>` +
+    padroesDB.map((p,i)=>{
+      const histCell = p.histFn
+        ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);" title="Calculado pela função '${p.histFn}' a partir do texto original da linha — não editável aqui, só via JSON">Calculado (${p.histFn})</span>`
+        : `<input class="cell-input wide" value="${p.hist||''}" onchange="updatePadrao(${i},'hist',this.value)">`;
+      return `<tr>
+      <td class="cell"><input class="cell-input wide" value="${(p.keywords||[]).join(', ')}" onchange="updatePadraoKeywords(${i},this.value)"></td>
+      <td class="cell"><input class="cell-input" style="width:70px" value="${p.debito??''}" onchange="updatePadrao(${i},'debito',this.value)"></td>
+      <td class="cell"><input class="cell-input" style="width:70px" value="${p.credito??''}" onchange="updatePadrao(${i},'credito',this.value)"></td>
+      <td class="cell">${histCell}</td>
+      <td class="cell" style="text-align:center"><input type="checkbox" ${p.ignorar?'checked':''} onchange="updatePadrao(${i},'ignorar',this.checked)"></td>
+      <td><button class="btn small ghost" onclick="removePadraoRow(${i})">✕</button></td>
+    </tr>`;
+    }).join("") + `</tbody>`;
+}
+function updatePadrao(i, field, val){
+  const p = padroesDB[i];
+  if(field==="debito" || field==="credito") p[field] = String(val).trim()===""?null:val.trim();
+  else if(field==="ignorar") p.ignorar = !!val;
+  else p[field] = val;
+  savePadroes(padroesDB);
+}
+function updatePadraoKeywords(i, val){
+  padroesDB[i].keywords = val.split(",").map(s=>s.trim()).filter(Boolean);
+  savePadroes(padroesDB);
+}
+function addPadraoRow(){
+  padroesDB.push({keywords:[], debito:null, credito:null, hist:"", ignorar:false});
+  savePadroes(padroesDB);
+  renderPadroesTable();
+}
+function removePadraoRow(i){
+  if(!confirm("Remover esse padrão?")) return;
+  padroesDB.splice(i,1);
+  savePadroes(padroesDB);
+  renderPadroesTable();
+}
+function togglePadroesJson(){
+  const box = document.getElementById("padroesJsonBox");
+  box.classList.toggle("hidden");
+  if(!box.classList.contains("hidden")) document.getElementById("padroesJsonArea").value = JSON.stringify(padroesDB, null, 2);
+}
+function salvarPadroesJson(){
+  const st = document.getElementById("padroesJsonStatus");
+  try{
+    const parsed = JSON.parse(document.getElementById("padroesJsonArea").value);
+    if(!Array.isArray(parsed)) throw new Error("O JSON precisa ser uma lista.");
+    padroesDB = parsed;
+    savePadroes(padroesDB);
+    renderPadroesTable();
+    st.classList.remove("hidden","err"); st.classList.add("ok"); st.textContent = "Salvo.";
+  }catch(err){
+    st.classList.remove("hidden","ok"); st.classList.add("err"); st.textContent = "Erro: " + err.message;
+  }
+}
+renderPadroesTable();
+
+// Histórico calculado a partir do texto original da linha, referenciado por nome
+// via o campo "histFn" do padrão (fica salvo/editado como JSON sem perder a função).
+const HIST_FUNCOES = {
+  // Cobrança híbrida: acrescenta o CNPJ/CPF e o nome do pagador (embutidos sem
+  // separador na descrição original) ao histórico padrão de taxa negocial.
+  taxaNegocialComNome(l){
+    const {cnpjcpf, nome} = extrairCnpjNome(l.historico);
+    const doc = cnpjcpf ? formatCnpjCpf(cnpjcpf) : "";
+    const partes = ["RECEBIMENTO REF. TAXA NEGOCIAL -", doc, nome].filter(Boolean);
+    return partes.join(" ");
+  },
+  // Aluguel do salão de festas — recebido por Pix de pessoa física, sem CNPJ/CPF
+  // dedicado no histórico, só o nome.
+  aluguelSalaoFestas(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    return `RECEBIMENTO REF ALUGUEL DO SALÃO DE FESTAS DE ${nome||""}`.trim();
+  },
+  aluguelQuiostaCampestre(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    return `RECEBIMENTO REF. TAXA DE ALUGUEL DO QUIOSTA DA SEDE DO CAMPESTRE - ${nome||""}`.trim();
+  },
+  // Mês citado é sempre o ANTERIOR ao da transação (paga/recebe em maio = internet de abril).
+  internetSulOnline(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    return `PAGAMENTO REF. INTERNET - ${nome||""} ${String(mm).padStart(2,"0")}/${yy}`.trim();
+  },
+  estornoSulOnline(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    return `RECEBIMENTO REF. ESTORNO DE ${nome||""} ${String(mm).padStart(2,"0")}/${yy} PAGO INDEVIDAMENTE`.trim();
+  },
+  // "PASSAGEM PEDAGIO DD/MM - PLACA - RUA... TG######" — o código do documento
+  // (TG######) fica colado sem espaço no fim da rua, por isso sai fora do histórico.
+  pedagio(l){
+    const m = l.historico.match(/^PASSAGEM PEDAGIO \d{2}\/\d{2}\s*-\s*(\S+)\s*-\s*(.+?)\s*(?:TG\d+)?$/);
+    if(!m) return null;
+    const [, placa, rua] = m;
+    return `PAGAMENTO REF. PEDAGIO ${placa} - ${rua}`.trim();
+  },
+  faxineiraLimpezaSede(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    return `PAGAMENTO REF. FAXINEIRA ${nome||""} - LIMPEZA DA SEDE`.trim();
+  },
+  assessoriaImprensa(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    return `PAGAMENTO REF. ASSESSORIA DE IMPRENSA - ${nome||""}`.trim();
+  },
+  // "LIQUIDACAO BOLETO SICREDI CNPJ NOME CODIGO" — o código do boleto (só dígitos)
+  // fica colado no fim sem separador, por isso sai fora do nome. Mês citado é sempre
+  // o ANTERIOR ao da transação (paga em maio = telefone de abril).
+  telefoneMesAnterior(l){
+    const m = l.historico.match(/^LIQUIDACAO BOLETO SICREDI \d{11,14}\s+(.+?)\s+\d+$/);
+    const nome = m ? m[1] : "";
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    return `PAGAMENTO REF. TELEFONE ${String(mm).padStart(2,"0")}/${yy} - ${nome}`.trim();
+  },
+  energiaEletricaMesAnterior(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    return `PAGAMENTO REF. ENERGIA ELETRICA ${String(mm).padStart(2,"0")}/${yy} - ${nome||""}`.trim();
+  },
+  internetBandaturbo(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    return `PAGAMENTO REF. INTERNET ${String(mm).padStart(2,"0")}/${yy} - ${nome||""}`.trim();
+  },
+  musicaFestaPosse(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    return `PAGAMENTO REF. MUSICA FESTA DE POSSE DA DIRETORIA - ${nome||""}`.trim();
+  },
+  buffetFestaPosse(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    return `PAGAMENTO REF. BUFFET FESTA DA POSSE DA DIRETORIA - ${nome||""}`.trim();
+  },
+  mensalidadeSindes(l){
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    return `PAGAMENTO REF. MENSALIDADE SINDES ${String(mm).padStart(2,"0")}/${yy}`;
+  },
+  // Duas linhas IDÊNTICAS no extrato (mesmo histórico, mesmo valor) que na verdade são
+  // contas diferentes — nada no extrato diz qual é qual, então a 1ª que aparecer no mês
+  // vira Salão Novo, a 2ª vira Salão Pequeno (ordem de aparição, contador em p._occurCount,
+  // resetado a cada processamento).
+  provedorNetworkOrdem(l, p){
+    p._occurCount = (p._occurCount||0) + 1;
+    const sufixos = ["SALAO NOVO NETWORK", "SALAO PEQUENO NETWORK"];
+    const sufixo = sufixos[p._occurCount-1] || `${sufixos[sufixos.length-1]} (ocorrência ${p._occurCount} — só ${sufixos.length} esperadas)`;
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    return `PAGAMENTO REF. PROVEDOR DE INTERNET ${String(mm).padStart(2,"0")}/${yy} - ${sufixo}`;
+  },
+  // Água CASAN — duas contas diferentes (Sede e Sede Recreativa) com o MESMO CNPJ no
+  // extrato; nada no texto as diferencia, só o valor (menor = Sede, maior = Sede
+  // Recreativa) — o papel de cada linha já foi decidido no pré-passo
+  // preAtribuirAguaCasan() e fica em l._papelAgua antes de chegar aqui.
+  aguaCasanSedes(l){
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    const mesAno = `${String(mm).padStart(2,"0")}/${yy}`;
+    if(l._papelAgua === "sede") return `PAGAMENTO REF. AGUA SEDE MAT. 00340049 ${mesAno} - CASAN`;
+    if(l._papelAgua === "recreativa") return `PAGAMENTO REF. AGUA SEDE RECREATIVA MAT. 09399798 ${mesAno} - CASAN`;
+    return null;
+  },
+  internetVivoSedes(l){
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    const mesAno = `${String(mm).padStart(2,"0")}/${yy}`;
+    if(l._papelVivo === "sede") return `PAGAMENTO REF. INTERNET DA SEDE ${mesAno} - VIVO`;
+    if(l._papelVivo === "movel") return `PAGAMENTO REF. INTERNET MÓVEL ${mesAno} - VIVO`;
+    return null;
+  },
+  aguaSubsedeSamae(l){
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    return `PAGAMENTO REF. AGUA DA SUBSEDE ${String(mm).padStart(2,"0")}/${yy} - SAMAE`;
+  },
+  // Cheque compensado — SEMPRE D148 (Cheques emitidos a compensar) C10, independente
+  // do cheque já ter nota fiscal com baixa cadastrada ou não. Quando a baixa de
+  // entradas for feita no Domínio pra um título pago por cheque, a conta de crédito
+  // do pagamento lá dentro precisa ser trocada manualmente de 10 pra 148, pra zerar
+  // esse lançamento (o Domínio usa 10 como padrão, não tem como fazer isso pelo TXT).
+  compensacaoCheque(l){
+    const m = l.historico.match(/\b(ALW\d+)/i);
+    const numero = m ? m[1] : "";
+    return `VALOR REF. COMPENSAÇÃO DE CHEQUE Nº ${numero}`;
+  },
+  convenioOdontologico(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    return `PAGAMENTO REF. CONVENIO ODONTOLOGICO ${nome||""}`.trim();
+  },
+  // Recebimento que financia um repasse ACC (contrapartida da entidade mantenedora) —
+  // a parcela segue a MESMA sequência dos repasses aos funcionários daquele grupo
+  // (asilo/timbe/hospital), mas tem contador PRÓPRIO em vez de ler do cadastro de
+  // Repasses ACC ao vivo — evita depender da ordem em que as linhas do extrato caem
+  // dentro do mesmo processamento. Precisa ser mantido em sincronia manualmente se
+  // algum mês pular ou tiver ajuste na sequência de um dos dois lados.
+  recebimentoRepasseAcc(l, p){
+    const base = p._parcelaPendente!=null ? p._parcelaPendente : p.parcelaState.ultimaParcela;
+    const parcela = base + 1;
+    p._parcelaPendente = parcela;
+    return `RECEBIMENTO DE VALOR A REPASSAR AOS FUNCIONÁRIOS PARCELA ${parcela} - ${p.programaNome}`;
+  },
+  internetSulOnlinePix(l){
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    return `PAGAMENTO REF. INTERNET ${String(mm).padStart(2,"0")}/${yy} - SUL ONLINE`;
+  },
+  // Valor menor = subsede (mês ANTERIOR ao pagamento), valor maior = sede (mês ATUAL do
+  // pagamento — não é erro, o usuário confirmou que essa conta cita o mês corrente).
+  energiaCelescSedes(l){
+    let mmAnt = l.data.m - 1, yyAnt = l.data.y;
+    if(mmAnt < 1){ mmAnt = 12; yyAnt -= 1; }
+    const mesAnterior = `${String(mmAnt).padStart(2,"0")}/${yyAnt}`;
+    const mesAtual = `${String(l.data.m).padStart(2,"0")}/${l.data.y}`;
+    if(l._papelCelesc === "subsede") return `PAGAMENTO REF. ENERGIA ELÉTRICA DA SUBSEDE UC 42271470 ${mesAnterior} - CELESC`;
+    if(l._papelCelesc === "sede") return `PAGAMENTO REF. ENERGIA ELÉTRICA DA SEDE UC 48000223 ${mesAtual} - CELESC`;
+    return null;
+  },
+  // Parcelamento (compra de garrafas) — mesma ideia do cadastro de repasses (parcela
+  // incrementa sozinha a cada mês), mas guardada no próprio padrão (p.parcelaState),
+  // já que é só um contrato, não uma pessoa por linha. valorIgual (no padrão) garante
+  // que só entra nessa parcela quando o valor bate exatamente com o esperado.
+  garrafasPersonalizadas(l, p){
+    const base = p._parcelaPendente!=null ? p._parcelaPendente : p.parcelaState.ultimaParcela;
+    const parcela = base + 1;
+    p._parcelaPendente = parcela;
+    const total = p.parcelaState.totalParcelas;
+    return `PAGAMENTO REF. COMPRA DE 6600 GARRAFAS PERSONALIZADAS ${String(parcela).padStart(2,"0")}/${String(total).padStart(2,"0")} - DALIZA BRINDES (JAQUELINE GOMES MIRANDA)`;
+  },
+  energiaCooperaliancaRecreativa(l){
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    return `PAGAMENTO REF. ENERGIA ELÉTRICA DA SEDE RECREATIVA UC 2333907302 ${String(mm).padStart(2,"0")}/${yy} - COOPERALIANCA`;
+  },
+  convenioSindHospitais(l){
+    let mm = l.data.m - 1, yy = l.data.y;
+    if(mm < 1){ mm = 12; yy -= 1; }
+    return `PAGAMENTO REF. CONVENIO SINDICATO DOS HOSPITAIS ${String(mm).padStart(2,"0")}/${yy}`;
+  },
+  gratificacaoAgenteSindicalizacao(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    return `PAGAMENTO REF. GRATIFICAÇÃO PARA O AGENTE DE SINDICALIZAÇÃO ${nome||""}`.trim();
+  },
+  verbaReuniaoConselheiroFiscal(l){
+    const {nome} = extrairCnpjNome(l.historico);
+    return `PAGAMENTO REF. VERBA DE REUNIÃO DO DIA ${fmtDateBR(l.data)} DO CONSELHEIRO FISCAL ${nome||""}`.trim();
+  },
+};
+function resolveHist(p, l){ return p.histFn ? (HIST_FUNCOES[p.histFn] ? HIST_FUNCOES[p.histFn](l, p) : null) : p.hist; }
+// Duas ocorrências do mesmo CNPJ no extrato (só o valor diferencia qual é qual — mesma
+// ideia da água CASAN) — precisa ver TODAS as linhas do mês de uma vez antes de decidir.
+// Se aparecer mais que 2 num mês, as extras ficam sem papel definido (histFn retorna
+// null, cai pra revisão manual) em vez de chutar.
+function preAtribuirPorValor(linhas, cnpj, campo, papeis){
+  const ocorrencias = linhas.filter(l => l.historico.includes(cnpj));
+  const ordenadas = [...ocorrencias].sort((a,b)=> Math.abs(a.valor)-Math.abs(b.valor));
+  ordenadas.forEach((l,i)=>{ l[campo] = papeis[i] ?? null; });
+}
+function preAtribuirAguaCasan(linhas){ preAtribuirPorValor(linhas, "82508433000117", "_papelAgua", ["sede","recreativa"]); }
+function preAtribuirInternetVivo(linhas){ preAtribuirPorValor(linhas, "02558157000162", "_papelVivo", ["sede","movel"]); }
+function preAtribuirEnergiaCelesc(linhas){ preAtribuirPorValor(linhas, "08336783000190", "_papelCelesc", ["subsede","sede"]); }
+
+/* ---- GPS de autônomos (INSS) — lançamento composto quando pago em atraso ----
+   "DEBITO GPS" no extrato não traz nome nem CPF, só o valor pago (guia + juros de
+   atraso). O valor da guia "normal" (370,60 ou 391,14) diferencia o grupo de pessoas
+   — dentro do mesmo grupo, várias linhas idênticas só se diferenciam pela ordem de
+   aparição (confirmado com o usuário antes de implementar). Cada linha vira um lote de
+   3 pernas: D241 (valor da guia), D145 (diferença/juros), C10 (valor total pago) —
+   fecha sozinho porque D241+D145 = C10.
+   ATENÇÃO: os valores de guia (370,60/391,14) são a base de MAIO/2026 — confira se
+   ainda são os corretos antes de reprocessar em meses futuros (podem reajustar). */
+const GPS_AUTONOMOS_ORDEM = [
+  {nome:"REGINALDO KJHELIN COELHO", valorGuia:370.60},
+  {nome:"GABRIELA CAMPOS PNKOSKI", valorGuia:370.60},
+  {nome:"CLEITON RODRIGUES VICENTE", valorGuia:370.60},
+  {nome:"CLEBER RICARDO DA SILVA CANDIDO", valorGuia:370.60},
+];
+const GPS_VALOR_MAIOR = {nome:"FABIO BELUCCO CAMILO", valorGuia:391.14};
+function buildInssAutonomoEntries(l, nome, valorGuia){
+  const totalPago = Math.abs(l.valor);
+  const diferenca = Math.round((totalPago - valorGuia)*100)/100;
+  const hist = `PAGAMENTO REF. INSS AUTONOMO DO MEMBRO ${nome}`;
+  const negativa = diferenca < 0;
+  const statusOk = negativa ? "Diferença negativa — valor da guia (370,60/391,14) provavelmente desatualizado, confira" : "OK (INSS autônomo, com juros de atraso)";
+  return [
+    {data:l.data, debito:241, credito:null, valor:valorGuia, hist, complemento:null, iniciaLote:1, flag:negativa, statusText:statusOk},
+    {data:l.data, debito:145, credito:null, valor:diferenca, hist, complemento:null, iniciaLote:null, flag:negativa, statusText:statusOk},
+    {data:l.data, debito:null, credito:10, valor:totalPago, hist, complemento:null, iniciaLote:null, flag:false, statusText:"OK (INSS autônomo, com juros de atraso)"},
+  ];
+}
+function isDebitoGps(l){ return normalizeText(l.historico).startsWith("DEBITO GPS"); }
+function buildGpsAutonomoLancamento(l, gpsOrdemState){
+  const near391 = Math.abs(Math.abs(l.valor) - GPS_VALOR_MAIOR.valorGuia) < Math.abs(Math.abs(l.valor) - GPS_AUTONOMOS_ORDEM[0].valorGuia);
+  if(near391) return buildInssAutonomoEntries(l, GPS_VALOR_MAIOR.nome, GPS_VALOR_MAIOR.valorGuia);
+  const pessoa = GPS_AUTONOMOS_ORDEM[gpsOrdemState.i];
+  gpsOrdemState.i++;
+  if(!pessoa){
+    return [{data:l.data, debito:null, credito:10, valor:Math.abs(l.valor), hist:null, complemento:`${l.historico} — mais ocorrência(s) de GPS autônomo do que as ${GPS_AUTONOMOS_ORDEM.length} pessoas cadastradas`, iniciaLote:1, flag:true, statusText:"Ocorrência a mais do que o esperado — confira/cadastre manualmente"}];
+  }
+  return buildInssAutonomoEntries(l, pessoa.nome, pessoa.valorGuia);
+}
+// padrão opcional "valorIgual": além do texto bater, o valor absoluto do lançamento
+// precisa ser exatamente esse (ex. "RECEBIMENTO PIX" só quando o valor é R$200,00) —
+// necessário pra categorias do extrato que misturam origens bem diferentes sob o
+// mesmo texto genérico.
+function matchPadrao(l){
+  const norm = normalizeText(l.historico);
+  for(const p of padroesDB){
+    if(p.valorIgual!=null && Math.round(Math.abs(Math.abs(l.valor)-p.valorIgual)*100)!==0) continue;
+    for(const kw of (p.keywords||[])){
+      if(kw && norm.includes(normalizeText(kw))) return p;
+    }
+  }
+  return null;
+}
+
+/* ---- Cadastro: Repasses ACC (parcela incrementa sozinha, por pessoa) ----
+   Recebido via PAGAMENTO PIX pro CPF de cada funcionário; a parcela mensal (informada pelo
+   relatório da ACC) segue uma sequência própria POR PESSOA — não é a mesma pra todo mundo
+   (uma pessoa pode estar em uma parcela mais adiantada que outra). "ultimaParcela" guarda a
+   última parcela já processada; a próxima gerada é sempre ultimaParcela+1, e só confirma
+   (incrementa de vez) depois que o lançamento do mês realmente foi gerado. Duas convenções
+   diferentes (Asilo São Vicente de Paulo / Hospital São José) usam contas e texto de
+   histórico próprios — "grupo" escolhe qual delas usar. */
+const REPASSE_GRUPOS = {
+  asilo: {debito:263, credito:10, hist:(nome,parcela)=>`PAGAMENTO REF. REPASSE ACC ASILO SÃO VICENTE DE PAULO PARC. ${parcela} PARA ${nome}`},
+  hospital: {debito:268, credito:10, hist:(nome,parcela)=>`PAGAMENTO REF. REPASSE ACC HOSPITAL SÃO JOSÉ PARC. ${parcela} PARA ${nome}`},
+  timbe: {debito:264, credito:10, hist:(nome,parcela)=>`PAGAMENTO REF. REPASSE ACC MANTENEDORA AMIGOS DO HOSP. TIMBE DO SUL PARC. ${parcela} PARA ${nome}`},
+};
+const REPASSES_ACC_SEED = [
+  {grupo:"asilo", cpf:"08193801997", nome:"DANIELA MACHADO TORQUATO", ultimaParcela:15},
+  {grupo:"asilo", cpf:"09091234970", nome:"ELAINE REUS RODRIGUES", ultimaParcela:15},
+  {grupo:"asilo", cpf:"18568599087", nome:"VERA REGINA DE AGUIAR", ultimaParcela:15},
+  {grupo:"asilo", cpf:"15107477020", nome:"MARIA DE FATIMA TIMBONI", ultimaParcela:15},
+  {grupo:"asilo", cpf:"88752160963", nome:"ELI VITICOSKI PEREIRA", ultimaParcela:15},
+  {grupo:"asilo", cpf:"71187669920", nome:"BERNADETE GOMES BERNARDO", ultimaParcela:15},
+  {grupo:"asilo", cpf:"09785160955", nome:"WILLIAM DE JESUS", ultimaParcela:15},
+  {grupo:"asilo", cpf:"72995980944", nome:"CLEUSA MOTA", ultimaParcela:15},
+  {grupo:"asilo", cpf:"12279855925", nome:"RANYA DE JESUS", ultimaParcela:15},
+  {grupo:"asilo", cpf:"97357456900", nome:"ODAIR DOS SANTOS CESAR", ultimaParcela:15},
+  {grupo:"asilo", cpf:"05392280951", nome:"BEATRIZ BORGES MACHADO", ultimaParcela:15},
+  {grupo:"asilo", cpf:"01113820098", nome:"EUNICE CARDOSO DE OLIVEIRA", ultimaParcela:15},
+  {grupo:"asilo", cpf:"03645688951", nome:"VANESSA TERESINHA DA ROSA", ultimaParcela:15},
+  {grupo:"asilo", cpf:"90895703904", nome:"MARIA BENADILE LEMOS PALHANO", ultimaParcela:14},
+  {grupo:"asilo", cpf:"52175189015", nome:"ANGELA MARIA TIMBONI VIEIRA", ultimaParcela:15},
+  {grupo:"asilo", cpf:"88751252953", nome:"MARIA CARMELINDA ROCHA", ultimaParcela:15},
+  {grupo:"asilo", cpf:"88742970920", nome:"ANDREIA PEREIRA", ultimaParcela:15},
+  // Hospital São José — lote de 25/05/2026, todos na parcela 5 (ultimaParcela:4), exceto
+  // a Rita de Cassia Alexandre: ela já tinha um pagamento em 04/05 (parcela 4), então
+  // começa em ultimaParcela:3 pra gerar 4 na primeira ocorrência do mês e 5 na segunda.
+  // Nome vem truncado igual ao extrato (o relatório da ACC tem o nome completo, mas não
+  // dá pra casar cada um com o CPF certo sem risco de erro manual em lote desse tamanho).
+  {grupo:"hospital", cpf:"89881222087", nome:"VANUSA DE OLIVEIRA CAL", ultimaParcela:4},
+  {grupo:"hospital", cpf:"00855056096", nome:"ETHIANE MACHADO DE LIM", ultimaParcela:4},
+  {grupo:"hospital", cpf:"72385880059", nome:"ANGELA FERNANDA ZURCHI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"00381300927", nome:"KELLY APARECIDA DA LUZ", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03620347964", nome:"INAIARA DE SOUZA FERRE", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03073561919", nome:"LUCIANA CANONICA DA RO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"68310978049", nome:"EDSON LUIS MARTINS DA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04258692964", nome:"SCHEILA BATISTA PACHEC", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04566136418", nome:"AILANA PAULA DA CONCEI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03141914966", nome:"CLEITON RODRIGUES VICE", ultimaParcela:4},
+  {grupo:"hospital", cpf:"05520365954", nome:"MOISES DONATO TEIXEIRA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04944354967", nome:"Juliana Owicki", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04229064926", nome:"NOEMI SEVERINO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04272780905", nome:"GISLAINE BAGIO MACALOS", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04281798943", nome:"JOSIANE DAGOSTIM FERNA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04873215960", nome:"ZEFERINO ALMEIDA DA SI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"00746809948", nome:"ELISANGELA APARECIDA L", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04760283960", nome:"ELIZANDRA RAMOS", ultimaParcela:4},
+  {grupo:"hospital", cpf:"94246912972", nome:"SALETE BRANCO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04918092470", nome:"OSIEL FRANCISCO DA SIL", ultimaParcela:4},
+  {grupo:"hospital", cpf:"06245775973", nome:"GISELE FREITAS CASAGRA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"06582213962", nome:"Merilis Brunelli Durig", ultimaParcela:4},
+  {grupo:"hospital", cpf:"05564661958", nome:"MARCOS FERNANDES SCHAU", ultimaParcela:4},
+  {grupo:"hospital", cpf:"28744107803", nome:"Vivian Maciel Fernande", ultimaParcela:4},
+  {grupo:"hospital", cpf:"01458694909", nome:"RENATA DELFINO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"07843536973", nome:"MARIANE SANGALETTI BON", ultimaParcela:4},
+  {grupo:"hospital", cpf:"07275490900", nome:"MARLUCI ROSA DA ROCHA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03732852997", nome:"SILVIA PEDRO DA SILVA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"95113207934", nome:"CRISTIANE RABELO BELUC", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03618092989", nome:"DANIELLE LOUISE POTTIE", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03653989930", nome:"ERICA ALVES MEDEIROS", ultimaParcela:4},
+  {grupo:"hospital", cpf:"07422344954", nome:"Graziele Firmino Westf", ultimaParcela:4},
+  {grupo:"hospital", cpf:"00616081065", nome:"JOICE ELENIR VIEIRA DA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"77788346934", nome:"ROSA MARIA PACHECO MAR", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03329442980", nome:"CLARICE MELLO ALVES", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04682366947", nome:"FRANCIELE KREUTZ", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03590564903", nome:"VANDA CATARINA LORENZI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"00502737956", nome:"SOLANGE MENGER", ultimaParcela:4},
+  {grupo:"hospital", cpf:"50215167953", nome:"EDNA EDITE SANTOS LOCK", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03206399912", nome:"Rubia Hofmann Rabelo", ultimaParcela:4},
+  {grupo:"hospital", cpf:"80749003987", nome:"ALZIRA DA COSTA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"08768801971", nome:"BARBARA CLEMES DORDET", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04680310901", nome:"Edjane Buratti Campos", ultimaParcela:4},
+  {grupo:"hospital", cpf:"86260219920", nome:"PAULO ROBERTO SALVARO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"70743088034", nome:"ZILDA LINO RAFAEL", ultimaParcela:4},
+  {grupo:"hospital", cpf:"01955465983", nome:"Jucemara da Silva", ultimaParcela:4},
+  {grupo:"hospital", cpf:"05367095992", nome:"Jucelia Melo Honofre", ultimaParcela:4},
+  {grupo:"hospital", cpf:"02599478901", nome:"JUAREZ ANTUNES DE BITT", ultimaParcela:4},
+  {grupo:"hospital", cpf:"66991196991", nome:"Rita de Cassia Alexand", ultimaParcela:3},
+  {grupo:"hospital", cpf:"08164585963", nome:"VITORIA MAFFEZZOLLI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04529303918", nome:"LUCIMARA QUARINIRI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"96435950997", nome:"SIRLENE TEREZINHA ZUCH", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03801708926", nome:"Roselaine Vitório Alme", ultimaParcela:4},
+  {grupo:"hospital", cpf:"82352267900", nome:"ELAINE FERREIRA GOULAR", ultimaParcela:4},
+  {grupo:"hospital", cpf:"01844095940", nome:"SILVIA PATRICIA MELO D", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03253807916", nome:"PAULO HENRIQUE NUNES", ultimaParcela:4},
+  {grupo:"hospital", cpf:"07520102980", nome:"DAIANE MARCELINO DA RO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"89922891972", nome:"RUBIA REMOR PEREIRA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04061379941", nome:"DIANE CARDOSO FIGUEIRE", ultimaParcela:4},
+  {grupo:"hospital", cpf:"00628309961", nome:"ANA PAULA CARDOSO MADE", ultimaParcela:4},
+  {grupo:"hospital", cpf:"00927768925", nome:"JULIANA GONCALVES", ultimaParcela:4},
+  {grupo:"hospital", cpf:"00182164047", nome:"DEBORA GONCALVES DA SI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"74001574004", nome:"MARCOS PAULO CARDOSO L", ultimaParcela:4},
+  {grupo:"hospital", cpf:"08134958907", nome:"DEIVID MORAIS DE SOUZA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"01999813960", nome:"MARIA BEATRIZ DE LUCA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"43062466391", nome:"MARIA HELENA QUEIROS P", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03493054980", nome:"FERNANDA CAVANHOLI MAN", ultimaParcela:4},
+  {grupo:"hospital", cpf:"05090188904", nome:"MORGANA CARBONI ALBERT", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03302508921", nome:"VANESSA VIEIRA BITTENC", ultimaParcela:4},
+  {grupo:"hospital", cpf:"02149355906", nome:"ROSIVALDO ALVES JOAQUI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"07007594921", nome:"FLAVIA DE FREITAS VICE", ultimaParcela:4},
+  {grupo:"hospital", cpf:"06206229971", nome:"MARIHA SANTIAGO DOMING", ultimaParcela:4},
+  {grupo:"hospital", cpf:"07569135946", nome:"PAULO HENRIQUE KUIAVSK", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03167033975", nome:"ELIANE ALFEU PATRICIO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"02477713922", nome:"GRAZIELA EUGENIO MILIO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"08280973990", nome:"BRUNA MORAES", ultimaParcela:4},
+  {grupo:"hospital", cpf:"00486005984", nome:"MARCELO GOMES DE OLIVE", ultimaParcela:4},
+  {grupo:"hospital", cpf:"02012234062", nome:"Claudiele Rios Moraes", ultimaParcela:4},
+  {grupo:"hospital", cpf:"12414904909", nome:"Pedro Victor Feitosa G", ultimaParcela:4},
+  {grupo:"hospital", cpf:"08010032964", nome:"Franciele Carvalho", ultimaParcela:4},
+  {grupo:"hospital", cpf:"26195738824", nome:"ANDREIA FERREIRA GOMES", ultimaParcela:4},
+  {grupo:"hospital", cpf:"02652573950", nome:"MARCIA DANIELA CIZESKI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"56641095053", nome:"MARCIA NOELI SILVA CLE", ultimaParcela:4},
+  {grupo:"hospital", cpf:"05783512931", nome:"FILIPE DE OLIVEIRA FER", ultimaParcela:4},
+  {grupo:"hospital", cpf:"06809708944", nome:"ANA PAULA MARQUES VIEI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"98410288915", nome:"EDIMARA MARQUES", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03780076969", nome:"GISLANE MACIEL VIEIRA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"01628562960", nome:"Silvana Velho Campos", ultimaParcela:4},
+  {grupo:"hospital", cpf:"78429390987", nome:"IVANIR FERNANDES", ultimaParcela:4},
+  {grupo:"hospital", cpf:"28382912893", nome:"FABIANA DE SOUZA SANTO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"05883704956", nome:"ELOIZA BERNARDINO VELH", ultimaParcela:4},
+  {grupo:"hospital", cpf:"07557877900", nome:"TAINARA JEREMIAS", ultimaParcela:4},
+  {grupo:"hospital", cpf:"62318292949", nome:"Edna David Medeiros", ultimaParcela:4},
+  {grupo:"hospital", cpf:"82097500030", nome:"ROSELAINE TORRES FERRE", ultimaParcela:4},
+  {grupo:"hospital", cpf:"94799954091", nome:"EVANIRA MULLER", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04680094931", nome:"PATRICIA MACHADO DA SI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03246039917", nome:"MARILEIA COSTA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03272253947", nome:"ANDERSON FERNANDES GON", ultimaParcela:4},
+  {grupo:"hospital", cpf:"00521700981", nome:"ELAINE ALVES DE OLIVEI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"02684000913", nome:"ANA PAULA FERNANDES LE", ultimaParcela:4},
+  {grupo:"hospital", cpf:"80054617987", nome:"ELIEGE BROGNI DALEFFE", ultimaParcela:4},
+  {grupo:"hospital", cpf:"08820149940", nome:"MARIELI SANTOS PADILHA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"81787278972", nome:"Maria Seloi da Silva", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03397083958", nome:"JUCELMA PATRICIO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"02628506998", nome:"ROSEMERI DOS SANTOS AR", ultimaParcela:4},
+  {grupo:"hospital", cpf:"95123237968", nome:"ROSIMERI BERTOLINO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"02130272916", nome:"CASSIANA BORGES FONSEC", ultimaParcela:4},
+  {grupo:"hospital", cpf:"75617854968", nome:"LUIZ EUGENIO DE MELO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"06892180957", nome:"MONICA APARECIDA MARGH", ultimaParcela:4},
+  {grupo:"hospital", cpf:"72782137972", nome:"MARIA APARECIDA MENDES", ultimaParcela:4},
+  {grupo:"hospital", cpf:"00875385982", nome:"CARLA CARDOSO BITTENCO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"05661377983", nome:"JULIANE MEDEIROS DA SI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"01494790009", nome:"JULIANA PRATES DA CUNH", ultimaParcela:4},
+  {grupo:"hospital", cpf:"03771481996", nome:"FABIANA DAGOSTIM FERNA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"79517102968", nome:"LUCIANA DA ROSA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"06933931900", nome:"MARIEL BEZ FONTANA LIC", ultimaParcela:4},
+  {grupo:"hospital", cpf:"05125579939", nome:"AECIO CARBONI", ultimaParcela:4},
+  {grupo:"hospital", cpf:"05072788954", nome:"DIEGO ANGELO MEDEIROS", ultimaParcela:4},
+  {grupo:"hospital", cpf:"02568732911", nome:"MAXCIA SORATO", ultimaParcela:4},
+  {grupo:"hospital", cpf:"02528421974", nome:"SANDRO RENATO DA SILVA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"82452172987", nome:"LUCILENA BATISTA", ultimaParcela:4},
+  {grupo:"hospital", cpf:"69315132904", nome:"JAQUELINE ROSA BARZAN", ultimaParcela:4},
+  {grupo:"hospital", cpf:"04770304919", nome:"JAQUELINE CORREA MARTI", ultimaParcela:4},
+  // Mantenedora Amigos do Hosp. Timbé do Sul — lote de 15/05/2026, todos na parcela 15
+  // (ultimaParcela:14), sem exceções conhecidas até agora.
+  {grupo:"timbe", cpf:"02418249905", nome:"ANACLEIA SIMON BORTOLU", ultimaParcela:14},
+  {grupo:"timbe", cpf:"94233470968", nome:"LUCIANA ZANELATTO MARQ", ultimaParcela:14},
+  {grupo:"timbe", cpf:"98676911991", nome:"ELISZANGELA DANIEL MON", ultimaParcela:14},
+  {grupo:"timbe", cpf:"04869042967", nome:"BRUNA STECANELLA", ultimaParcela:14},
+  {grupo:"timbe", cpf:"08789348982", nome:"DEBORA MACHADO SCUSSEL", ultimaParcela:14},
+  {grupo:"timbe", cpf:"34288295904", nome:"CELIR PANATTO NETTO", ultimaParcela:14},
+  {grupo:"timbe", cpf:"69051437900", nome:"LORIZETI PETERLE BERNH", ultimaParcela:14},
+  {grupo:"timbe", cpf:"07692228973", nome:"TAIZE SACHET", ultimaParcela:14},
+  {grupo:"timbe", cpf:"09274206941", nome:"MARIANE REZIN FAVARIN", ultimaParcela:14},
+  {grupo:"timbe", cpf:"69051674953", nome:"JADNA QUIRINO FABRI", ultimaParcela:14},
+  {grupo:"timbe", cpf:"71564039900", nome:"MARIA DE LOURDES MONDARDO BOEIRA", ultimaParcela:14},
+  {grupo:"timbe", cpf:"05240802912", nome:"MILENE BURIGO VIEIRA", ultimaParcela:14},
+  {grupo:"timbe", cpf:"04369989981", nome:"FERNANDA FERRO DAL PONT", ultimaParcela:14},
+  {grupo:"timbe", cpf:"86875671972", nome:"MARIA ELIANA MORO ZUCH", ultimaParcela:14},
+  {grupo:"timbe", cpf:"44555199987", nome:"SALETE MONDARDO BERNHA", ultimaParcela:14},
+  {grupo:"timbe", cpf:"04751190962", nome:"JACIRA ZANZI PIZZOLLO", ultimaParcela:14},
+  {grupo:"timbe", cpf:"04587360902", nome:"ELAINE FERRO STECANELL", ultimaParcela:14},
+  {grupo:"timbe", cpf:"06795878961", nome:"BARBARA PIZZOLO TRAMON", ultimaParcela:14},
+  {grupo:"timbe", cpf:"69051771991", nome:"MARI NILDA MARCHESINI", ultimaParcela:14},
+  {grupo:"timbe", cpf:"04043388950", nome:"ANDREIA RONCANI SCHMID", ultimaParcela:14},
+  {grupo:"timbe", cpf:"48002399900", nome:"MARIZA ZUCHINALI", ultimaParcela:14},
+  {grupo:"timbe", cpf:"01823286941", nome:"ROSINEIA POLLI DAMIANI", ultimaParcela:14},
+  {grupo:"timbe", cpf:"95094520920", nome:"MARIA TERESINHA DONADE", ultimaParcela:14},
+];
+function loadRepassesAcc(){
+  const raw = localStorage.getItem("sindisaude_repasses_acc");
+  const salvo = raw ? JSON.parse(raw) : [];
+  const cpfs = new Set(salvo.map(r=>r.cpf));
+  const novos = REPASSES_ACC_SEED.filter(r=>!cpfs.has(r.cpf)).map(r=>({...r}));
+  const combinado = [...salvo, ...novos];
+  if(novos.length) saveRepassesAcc(combinado);
+  return combinado;
+}
+function saveRepassesAcc(list){ localStorage.setItem("sindisaude_repasses_acc", JSON.stringify(list)); }
+let repassesAccDB = loadRepassesAcc();
+let repassesAccFiltro = "";
+function renderRepassesTable(){
+  const tbl = document.getElementById("repassesAccTable");
+  const needle = normalizeText(repassesAccFiltro.trim());
+  const rows = repassesAccDB.map((r,i)=>({r,i})).filter(({r})=> !needle || normalizeText(r.cpf+" "+r.nome).includes(needle));
+  tbl.innerHTML = `<thead><tr><th>Grupo</th><th>CPF</th><th>Nome</th><th>Última Parcela</th><th></th></tr></thead><tbody>` +
+    rows.map(({r,i})=>`<tr>
+      <td class="cell"><input class="cell-input" style="width:70px" value="${r.grupo}" onchange="updateRepasseAcc(${i},'grupo',this.value)"></td>
+      <td class="cell"><input class="cell-input" value="${r.cpf}" onchange="updateRepasseAcc(${i},'cpf',this.value)"></td>
+      <td class="cell"><input class="cell-input wide" value="${r.nome}" onchange="updateRepasseAcc(${i},'nome',this.value)"></td>
+      <td class="cell"><input class="cell-input" style="width:70px" value="${r.ultimaParcela}" onchange="updateRepasseAcc(${i},'ultimaParcela',this.value)"></td>
+      <td><button class="btn small ghost" onclick="removeRepasseAcc(${i})">✕</button></td>
+    </tr>`).join("") + `</tbody>`;
+}
+function updateRepasseAcc(i, field, val){
+  const r = repassesAccDB[i];
+  r[field] = field==="ultimaParcela" ? (parseInt(val)||0) : val.trim();
+  saveRepassesAcc(repassesAccDB);
+}
+function removeRepasseAcc(i){
+  if(!confirm("Remover essa pessoa do cadastro de repasses ACC?")) return;
+  repassesAccDB.splice(i,1);
+  saveRepassesAcc(repassesAccDB);
+  renderRepassesTable();
+}
+function addRepasseAcc(){
+  repassesAccDB.push({grupo:"asilo", cpf:"", nome:"", ultimaParcela:0});
+  saveRepassesAcc(repassesAccDB);
+  renderRepassesTable();
+}
+renderRepassesTable();
+function matchRepasseAcc(l){
+  const m = String(l.historico||"").match(/(\d{14}|\d{11})/);
+  if(!m) return null;
+  return repassesAccDB.find(r=>r.cpf===m[1]) || null;
+}
+
+let lancExtratoState = null;
+wireDropzone("extratoLancDrop","extratoLancFile", async (f,d)=>{
+  const status = document.getElementById("lancStatus");
+  status.classList.remove("hidden","err"); status.textContent = "Lendo PDF...";
+  try{
+    lancExtratoState = await parseExtratoSindisaudeTodos(f);
+    if(!lancExtratoState.length) throw new Error("Não encontrei nenhum lançamento nesse extrato.");
+    markDropDone(d, `${f.name} (${lancExtratoState.length} lançamento(s) no extrato)`);
+    status.classList.add("hidden");
+  }catch(err){
+    status.classList.remove("hidden"); status.classList.add("err"); status.textContent = "Erro: " + err.message;
+    lancExtratoState = null;
+  }
+  document.getElementById("processLancBtn").disabled = !lancExtratoState;
+});
+
+/* ---- Extrato de Aplicação (Evolutivo e/ou Automático, opcional) — Rendimento do mês,
+   em regime de competência: soma o que já foi CAPITALIZADO no saldo (linhas
+   "Rendimentos" da Movimentação) com a VARIAÇÃO do "Rendimentos Provisionados" (o que
+   rendeu mas ainda não virou saldo) frente ao mês anterior — confirmado com o usuário
+   depois de ele notar que só o capitalizado (R$160mil) não batia com a queda do
+   provisionado entre abril e maio (R$115mil), sinal de que parte do rendimento
+   realizado veio do que já estava provisionado antes. O provisionado do mês anterior
+   fica salvo sozinho pro próximo mês não precisar reanexar o PDF de novo.
+   Fórmula: rendimentoMes = capitalizados + (provisionadoAtual - provisionadoAnterior)
+   O produto (Evolutivo/Automático) é lido do próprio PDF ("Produto: ..."), pra usar a
+   conta contábil certa de cada um sozinho — os dois usam o mesmo campo de upload. */
+const PRODUTOS_APLICACAO = {
+  EVOLUTIVO: {debito:108, credito:56, seedKey:"sindisaude_evolutivo_provisionado_anterior", seed:1266637.05, hist:"SICREDINVEST EVOLUTIVO"},
+  AUTOMATICO: {debito:154, credito:56, seedKey:"sindisaude_automatico_provisionado_anterior", seed:null, hist:"SICREDINVEST AUTOMÁTICO"},
+};
+function loadProvisionadoAnterior(cfg){
+  const raw = localStorage.getItem(cfg.seedKey);
+  return raw!=null ? parseFloat(raw) : cfg.seed;
+}
+function saveProvisionadoAnterior(cfg, v){ localStorage.setItem(cfg.seedKey, String(v)); }
+let evolutivoState = null; // {rendimentoMes, provisionadoAtual, dataFim, cfg}
+async function parseEvolutivo(file){
+  const pages = await extractPdfAllLines(file);
+  const allLines = pages.flat();
+  const fullText = allLines.join("\n");
+  const prodM = fullText.match(/Produto:\s*SICREDINVEST\s+(EVOLUTIVO|AUTOM[ÁA]TICO)/i);
+  if(!prodM) throw new Error("Não reconheci o produto desse PDF (esperava \"SICREDINVEST EVOLUTIVO\" ou \"SICREDINVEST AUTOMÁTICO\").");
+  const produto = prodM[1].normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
+  const cfg = PRODUTOS_APLICACAO[produto];
+  const capMatches = [...fullText.matchAll(/\d{2}\/\d{2}\/\d{4}\s+Rendimentos\s+([\d.,]+)/gi)];
+  const capitalizados = capMatches.reduce((s,m)=> s + (parseBRL(m[1])||0), 0);
+  const provM = fullText.match(/Rendimentos Provisionados\s+([\d.,]+)/i);
+  if(!provM) throw new Error("Não achei \"Rendimentos Provisionados\" nesse PDF.");
+  const provisionadoAtual = parseBRL(provM[1]);
+  const dm = fullText.match(/(\d{2})\/(\d{2})\/(\d{4})\s+Saldo Atual/i);
+  const dataFim = dm ? {y:parseInt(dm[3]), m:parseInt(dm[2]), d:parseInt(dm[1])} : null;
+  if(!dataFim) throw new Error("Não achei a data do \"Saldo Atual\" nesse PDF.");
+  const provisionadoAnterior = loadProvisionadoAnterior(cfg);
+  if(provisionadoAnterior==null) throw new Error(`Ainda não tenho o "Rendimentos Provisionados" do mês anterior do ${cfg.hist} — preciso do extrato de aplicação do mês passado desse produto pra estabelecer a base (peça pro Claude inicializar, igual foi feito pro Evolutivo com o PDF de abril).`);
+  const rendimentoMes = Math.round((capitalizados + (provisionadoAtual - provisionadoAnterior))*100)/100;
+  return {rendimentoMes, provisionadoAtual, dataFim, cfg};
+}
+wireDropzone("evolutivoDrop","evolutivoFile", async (f,d)=>{
+  try{
+    evolutivoState = await parseEvolutivo(f);
+    markDropDone(d, `${f.name} (${evolutivoState.cfg.hist} — rendimento do mês: R$ ${fmtBRL(evolutivoState.rendimentoMes)})`);
+  }catch(err){
+    evolutivoState = null;
+    alert("Erro ao ler o PDF da aplicação: " + err.message);
+  }
+});
+
+/* ---- Livro Diário CaixaW (opcional) — sistema interno do cliente, usado só pra
+   SUGERIR a categoria de linhas do extrato que não bateram com nenhum padrão,
+   cruzando por data+valor (não existe CNPJ confiável em boa parte das linhas desse
+   relatório pra cruzar por identidade). Cada lançamento real aparece DUAS VEZES no
+   relatório (uma vez do lado de cada conta batida — ex. Caixa Sede e a despesa) —
+   só guardamos a ocorrência do lado RECEITA/DESPESA (classificação começando com
+   "3." ou "4."), que é a que descreve o "porquê"; o lado Caixa/Banco só duplica o
+   mesmo texto sem agregar nada. Isso é só uma sugestão pro usuário revisar — nunca
+   preenche Débito/Crédito sozinho, porque os códigos desse sistema (CaixaW) não são
+   os mesmos do Domínio. */
+let livroDiarioState = null; // Map "y-m-d|valorAbs" -> [{historico, contaNome, contaCodigo}]
+async function parseLivroDiario(file){
+  const pages = await extractPdfAllLines(file);
+  const allLines = pages.flat();
+  const mapa = new Map();
+  const headerRe = /^(.+?) - ([\d.]+) - (\d+)$/;
+  let contaAtual = null, dataAtual = null;
+  for(const l of allLines){
+    const dm = l.match(/^(\d{2})\/(\d{2})\/(\d{4})\b/);
+    if(dm && !/\d{2}\/\d{2}\/\d{4}\s*[-–]\s*\d{2}\/\d{2}\/\d{4}/.test(l)){
+      dataAtual = {y:+dm[3], m:+dm[2], d:+dm[1]};
+    }
+    const hm = l.match(headerRe);
+    if(hm && !/^(Pagamento|Recebido|Transi|Rec\.|Cheque|Aplica|Despes|Transfer|Restitui)/i.test(l)){
+      contaAtual = {nome:hm[1].trim(), codigo:hm[3], classif:hm[2]};
+      continue;
+    }
+    if(!contaAtual || !dataAtual || !/^[34]\./.test(contaAtual.classif)) continue;
+    const em = l.match(/^(.*?)\s+\d+\s+([\d.]+,\d{2})\s+([\d.]+,\d{2})\s*$/);
+    if(!em) continue;
+    const [, hist, deb, cred] = em;
+    const valor = Math.max(parseBRL(deb)||0, parseBRL(cred)||0);
+    if(valor<=0) continue;
+    const key = `${dataAtual.y}-${dataAtual.m}-${dataAtual.d}|${valor.toFixed(2)}`;
+    if(!mapa.has(key)) mapa.set(key, []);
+    mapa.get(key).push({historico:hist.trim(), contaNome:contaAtual.nome, contaCodigo:contaAtual.codigo});
+  }
+  return mapa;
+}
+function lookupLivroDiario(l){
+  if(!livroDiarioState) return null;
+  const key = `${l.data.y}-${l.data.m}-${l.data.d}|${Math.abs(l.valor).toFixed(2)}`;
+  const found = livroDiarioState.get(key);
+  return found && found.length ? found[0] : null;
+}
+wireDropzone("livroDiarioDrop","livroDiarioFile", async (f,d)=>{
+  try{
+    livroDiarioState = await parseLivroDiario(f);
+    markDropDone(d, `${f.name} (${livroDiarioState.size} combinação(ões) data+valor indexadas)`);
+  }catch(err){
+    livroDiarioState = null;
+    alert("Erro ao ler o Livro Diário: " + err.message);
+  }
+});
+
+function processarLancamentos(){
+  const linhas = lancExtratoState;
+  const rows = [];
+  let excluidas = 0;
+  const repassesUsados = new Set();
+  padroesDB.forEach(p=>{ p._occurCount = 0; });
+  preAtribuirAguaCasan(linhas);
+  preAtribuirInternetVivo(linhas);
+  preAtribuirEnergiaCelesc(linhas);
+  const gpsOrdemState = {i:0};
+  linhas.forEach(l=>{
+    if(isDebitoGps(l)){
+      buildGpsAutonomoLancamento(l, gpsOrdemState).forEach(e=>rows.push(e));
+      return;
+    }
+    const repasse = matchRepasseAcc(l);
+    if(repasse){
+      // se a mesma pessoa já apareceu antes NESTE processamento (ex. duas parcelas
+      // dela no mesmo mês), continua a contagem a partir da pendente, não da salva —
+      // senão as duas ocorrências saem com o mesmo número de parcela.
+      const base = repasse._ultimaParcelaPendente!=null ? repasse._ultimaParcelaPendente : repasse.ultimaParcela;
+      const parcela = base + 1;
+      const cfgGrupo = REPASSE_GRUPOS[repasse.grupo] || REPASSE_GRUPOS.asilo;
+      const hist = cfgGrupo.hist(repasse.nome, parcela);
+      rows.push({data:l.data, debito:cfgGrupo.debito, credito:cfgGrupo.credito, valor:Math.abs(l.valor), hist, complemento:null, iniciaLote:1, flag:false, statusText:`OK (repasse ACC ${repasse.grupo} — parcela ${parcela})`});
+      repasse._ultimaParcelaPendente = parcela;
+      repassesUsados.add(repasse);
+      return;
+    }
+    const p = matchPadrao(l);
+    if(p && p.ignorar){ excluidas++; return; }
+
+    if(p){
+      let d = p.debito, c = p.credito;
+      if(d==null && l.valor>0) d = 10;
+      if(c==null && l.valor<0) c = 10;
+      const matched = d!=null && c!=null;
+      const hist = resolveHist(p, l);
+      rows.push({data:l.data, debito:d, credito:c, valor:Math.abs(l.valor), hist:hist||null, complemento: hist?null:l.historico, iniciaLote:1, flag:!matched, statusText: matched?"OK (padrão cadastrado)":"Padrão parcial — só a conta banco foi preenchida"});
+      return;
+    }
+
+    // fallback genérico: só a conta banco, resto em branco pra completar à mão
+    let d=null, c=null;
+    if(l.valor>0) d=10; else c=10;
+    const sugestao = lookupLivroDiario(l);
+    const statusText = sugestao
+      ? `Sem padrão — Livro Diário sugere "${sugestao.contaNome}" (${sugestao.contaCodigo}): ${sugestao.historico}`
+      : "Sem padrão cadastrado — complete a outra conta à mão";
+    rows.push({data:l.data, debito:d, credito:c, valor:Math.abs(l.valor), hist:null, complemento:l.historico, iniciaLote:1, flag:true, statusText});
+  });
+  // só confirma (incrementa) a última parcela das pessoas que realmente geraram lançamento nesta rodada
+  repassesUsados.forEach(r=>{ if(r._ultimaParcelaPendente!=null){ r.ultimaParcela = r._ultimaParcelaPendente; delete r._ultimaParcelaPendente; } });
+  if(repassesUsados.size){ saveRepassesAcc(repassesAccDB); renderRepassesTable(); }
+  // confirma (incrementa) a parcela de padrões com parcelamento próprio (ex. compra
+  // parcelada) só depois que o lançamento do mês realmente foi gerado
+  let algumPadraoComParcela = false;
+  padroesDB.forEach(p=>{
+    if(p._parcelaPendente!=null){ p.parcelaState.ultimaParcela = p._parcelaPendente; delete p._parcelaPendente; algumPadraoComParcela = true; }
+  });
+  if(algumPadraoComParcela) savePadroes(padroesDB);
+  // Rendimento da aplicação evolutivo — lançamento avulso, não vem do extrato bancário.
+  // Só confirma (salva) o "provisionado" deste mês como base do próximo DEPOIS de gerar
+  // a linha com sucesso — senão reprocessar o mesmo mês de novo perderia a base certa.
+  if(evolutivoState){
+    const mesAno = `${String(evolutivoState.dataFim.m).padStart(2,"0")}/${evolutivoState.dataFim.y}`;
+    const cfg = evolutivoState.cfg;
+    rows.push({data:evolutivoState.dataFim, debito:cfg.debito, credito:cfg.credito, valor:evolutivoState.rendimentoMes, hist:`VALOR REF. RENDIMENTO DE APLICAÇÃO FINANCEIRA - ${cfg.hist} ${mesAno}`, complemento:null, iniciaLote:1, flag:false, statusText:"OK (rendimento do mês, regime de competência — extrato de aplicação)"});
+    saveProvisionadoAnterior(cfg, evolutivoState.provisionadoAtual);
+  }
+  lancRowsState = rows;
+  renderLancResult(rows, excluidas);
+}
+let lancRowsState = [];
+let lancTableState = makeTableState();
+let lancExcluidasState = 0;
+function renderLancResult(rows, excluidas){
+  document.getElementById("resultLancCard").classList.remove("hidden");
+  lancTableState = makeTableState();
+  lancExcluidasState = excluidas;
+  renderLancTable();
+}
+function renderLancTable(){
+  const box = document.getElementById("resultLancCard");
+  const rows = lancRowsState;
+  const nFlag = rows.filter(r=>r.flag).length;
+  const indexed = filterSortRows(rows, lancTableState, r=>[r.debito,r.credito,r.hist,r.complemento]);
+  let html = `<div class="section-title">Lançamentos — lanctos.txt</div>
+  <div class="summary-row">
+    <div class="item"><div class="k">Linhas</div><div class="v">${rows.length}</div></div>
+    <div class="item"><div class="k">Pra conferir</div><div class="v">${nFlag}</div></div>
+    <div class="item"><div class="k">Excluídas (ignoradas)</div><div class="v">${lancExcluidasState}</div></div>
+  </div>
+  <div class="help">Linhas em amarelo faltam completar (conta em branco, padrão não cadastrado) — edite direto na tabela ou cadastre um padrão novo e reprocesse.</div>
+  <div class="table-toolbar"><input type="search" value="${lancTableState.filter}" placeholder="Filtrar por conta ou histórico..." oninput="lancTableState.filter=this.value; renderLancTable();"><span class="count">${indexed.length===rows.length?`${rows.length} linha(s)`:`${indexed.length} de ${rows.length}`}</span></div>
+  <div class="table-wrap"><table class="preview"><thead><tr>
+    ${sortTh('lancTableState',lancTableState,'data','Data','renderLancTable')}
+    ${sortTh('lancTableState',lancTableState,'debito','Débito','renderLancTable')}
+    ${sortTh('lancTableState',lancTableState,'credito','Crédito','renderLancTable')}
+    ${sortTh('lancTableState',lancTableState,'valor','Valor','renderLancTable')}
+    <th>Complemento</th><th>Status</th>
+  </tr></thead><tbody>`;
+  indexed.forEach(({row:r, idx:i})=>{
+    html += `<tr class="${r.flag?'flag':''}">
+      <td class="cell"><input class="cell-input" value="${fmtDateBR(r.data)}" onchange="updateLancRow(${i},'data',this.value)"></td>
+      <td class="cell"><input class="cell-input" style="width:60px" value="${r.debito??''}" onchange="updateLancRow(${i},'debito',this.value)"></td>
+      <td class="cell"><input class="cell-input" style="width:60px" value="${r.credito??''}" onchange="updateLancRow(${i},'credito',this.value)"></td>
+      <td class="cell"><input class="cell-input num" value="${fmtBRL(r.valor)}" onchange="updateLancRow(${i},'valor',this.value)"></td>
+      <td class="cell"><input class="cell-input wide" value="${r.hist||r.complemento||''}" onchange="updateLancRow(${i},'complemento',this.value)"></td>
+      <td>${r.statusText||''}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>
+  <div class="btn-row">
+    <button class="btn" onclick="downloadLancXlsx()">Baixar lancamentos.xlsx</button>
+    <button class="btn ghost" onclick="downloadLancTxt()">Baixar lanctos.txt</button>
+  </div>`;
+  box.innerHTML = html;
+}
+function updateLancRow(i, field, val){
+  const r = lancRowsState[i];
+  if(field==="data"){ const dt=brParts(val); if(dt) r.data=dt; }
+  else if(field==="valor"){ const n=parseBRL(val); if(n!=null) r.valor=n; }
+  else if(field==="debito" || field==="credito"){ r[field] = String(val).trim()===""?null:val.trim(); }
+  else if(field==="complemento"){ r.complemento = val; r.hist = null; }
+  if(r.debito!=null && r.credito!=null && (r.hist || r.complemento)) r.flag = false;
+}
+const LANC_HEADER = ["Data","Débito","Crédito","Valor","Cód. Hist.","Complemento Histórico","Inicia Lote","Código Emp.","Centro de Custo Débito","Centro de Custo Crédito"];
+function lancRowArray(r){
+  const codEmp = document.getElementById("lancCodEmp").value.trim();
+  return [fmtDateBR(r.data), r.debito??"", r.credito??"", r.valor, "", r.hist||r.complemento||"", r.iniciaLote??"", codEmp, "", ""];
+}
+function downloadLancXlsx(){
+  downloadXlsx("lancamentos.xlsx", [LANC_HEADER, ...lancRowsState.map(lancRowArray)], "Lancamentos");
+}
+function downloadLancTxt(){
+  const pendentes = lancRowsState.filter(r=>r.flag);
+  if(pendentes.length){
+    if(!confirm(`${pendentes.length} linha(s) ainda marcada(s) pra conferir (conta em branco ou padrão incompleto). Gerar mesmo assim?`)) return;
+  }
+  const linhas = lancRowsState.map(r=>{
+    const codEmp = document.getElementById("lancCodEmp").value.trim();
+    const campos = [fmtDateBR(r.data), r.debito??"", r.credito??"", String(r.valor).replace(".",","), "", stripAccents(r.hist||r.complemento||""), r.iniciaLote??"", codEmp, "", ""];
+    return campos.join(";");
+  });
+  downloadTextAnsi("lanctos.txt", linhas.join("\r\n"));
+}
+</script>
+</body>
+</html>
