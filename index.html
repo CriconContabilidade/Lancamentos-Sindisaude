@@ -148,7 +148,7 @@ code{background:var(--paper);padding:1px 5px;border-radius:3px;font-family:'IBM 
   <!-- ===================== BAIXA DE ENTRADAS ===================== -->
   <div class="card">
     <div class="section-title">Baixa de Entradas</div>
-    <div class="help">Casa os débitos do extrato Sicoob (o mesmo já carregado acima) com o relatório <b>Contas a Pagar por Fornecedor</b> — pelo CNPJ/CPF que já vem embutido na maioria das linhas do extrato, resolvido pelo cadastro abaixo (alimentado pelo relatório de <b>Fornecedores</b> do Domínio, que só precisa ser reenviado quando tiver fornecedor novo). Quando um pagamento cobre mais de uma nota do mesmo fornecedor, soma automaticamente (busca exata, nunca aproxima). Gera <code>baixa_ent.txt</code> pro Domínio.</div>
+    <div class="help">Casa os débitos do extrato Sicoob (o mesmo já carregado acima) com o relatório <b>Contas a Pagar por Fornecedor</b> — pelo CNPJ/CPF que já vem embutido na maioria das linhas do extrato, resolvido pelo cadastro abaixo (alimentado pelo relatório de <b>Fornecedores</b> do Domínio, que só precisa ser reenviado quando tiver fornecedor novo). Quando um pagamento cobre mais de uma nota do mesmo fornecedor, soma automaticamente (busca exata, nunca aproxima). Pro que sobrar sem match (pago via intermediário, ou direto pelo <b>Caixa</b> — nunca aparece no extrato bancário), busca o Nº do documento no <b>Livro Diário CaixaW</b> (se anexado lá em cima, na seção de Lançamentos) — essas linhas ficam marcadas "PAGO VIA CAIXA" pra você conferir a conta de crédito certa no Domínio. Gera <code>baixa_ent.txt</code> pro Domínio.</div>
     <div class="field-row">
       <div class="field">
         <label>Contas a Pagar por Fornecedor (PDF)</label>
@@ -1327,9 +1327,38 @@ function processarEntradas(){
     });
   }
 
+  // Última tentativa: procura o Nº de documento de cada título ainda aberto no Livro
+  // Diário do cliente (se anexado lá em cima) — pega pagamentos por intermediário
+  // (Marketplace, PJBank, terceiro) que não têm CNPJ/nome reconhecível no extrato, E
+  // pagamentos feitos direto pelo Caixa (conta 5/163), que NUNCA passam pelo extrato
+  // bancário — por isso "pente fino": sem isso, título pago em espécie nunca seria
+  // encontrado de jeito nenhum, mesmo com o extrato e o cadastro perfeitos.
+  if(livroDiarioState){
+    const extratoDatasValores = new Set(lancExtratoState.map(l=> `${l.data.y}-${l.data.m}-${l.data.d}|${Math.abs(l.valor).toFixed(2)}`));
+    abertosPagar.filter(t=>!t._used).forEach(t=>{
+      const achado = buscarDocumentoLivroDiario(t.documento, saldoOuParcela(t));
+      if(!achado) return;
+      const noExtrato = extratoDatasValores.has(`${achado.data.y}-${achado.data.m}-${achado.data.d}|${achado.valor.toFixed(2)}`);
+      t._used = true;
+      const info = resolverCnpj(contasPagarState.empresaCnpj, "fornecedor", t.codigo, t.nome);
+      t._cnpjResolvido = info ? info.documento : null;
+      t._cnpjConfiavel = info ? info.confiavel : false;
+      rows.push(buildEntradaRow(t, achado.data, "warn",
+        noExtrato
+          ? `Achado no Livro Diário ("${achado.historico}") — confira contra o extrato bancário antes de exportar`
+          : `PAGO VIA CAIXA — achado no Livro Diário ("${achado.historico}"), não tem linha correspondente no extrato bancário. Confira a conta de crédito da baixa no Domínio (provavelmente 5/Caixa, não 10/banco)`));
+    });
+  }
+
+  // Títulos que sobraram mesmo depois de tudo (CNPJ, MEI por nome, busca ampla e Livro
+  // Diário) — pente fino de verdade: nada deveria desaparecer silenciosamente.
+  const naoEncontrados = abertosPagar.filter(t=>!t._used);
+
   entradasRowsState = rows;
+  entradasNaoEncontradosState = naoEncontrados;
   renderEntradasResult(rows, contasPagarState.empresaNome, contasPagarState.empresaCnpj);
 }
+let entradasNaoEncontradosState = [];
 function buildEntradaRow(titulo, dataBaixa, statusClass, statusText){
   const doc = titulo._cnpjResolvido;
   const cls = !doc ? "err" : (titulo._cnpjConfiavel===false ? "warn" : statusClass);
@@ -1358,6 +1387,7 @@ function renderEntradasTable(){
   const nOk = rows.filter(r=>!r.statusClass).length;
   const nErr = rows.filter(r=>r.statusClass==="err").length;
   const nWarn = rows.filter(r=>r.statusClass==="warn").length;
+  const nCaixa = rows.filter(r=>(r.statusText||"").startsWith("PAGO VIA CAIXA")).length;
   const nIncl = rows.filter(r=>r.incluir).length;
   const indexed = filterSortRows(rows, entradasTableState, r=>[r.numero,r.nome,r.cnpj]);
   let html = `<div class="section-title">${empresaNome} — baixa_ent.txt</div>
@@ -1366,9 +1396,10 @@ function renderEntradasTable(){
     <div class="item"><div class="k">Vão pro arquivo</div><div class="v">${nIncl}</div></div>
     <div class="item"><div class="k">OK</div><div class="v">${nOk}</div></div>
     <div class="item"><div class="k">Confira</div><div class="v">${nWarn}</div></div>
+    <div class="item"><div class="k">Pago via Caixa</div><div class="v">${nCaixa}</div></div>
     <div class="item"><div class="k">Sem CNPJ cadastrado</div><div class="v">${nErr}</div></div>
   </div>
-  <div class="help">Amarelo = casado só por valor (sem CNPJ/nome no extrato), confira. Vermelho = CNPJ do fornecedor não está no cadastro — complete na tabela de cadastro acima e reprocesse. Campos são editáveis.</div>
+  <div class="help">Amarelo = casado só por valor ou pelo Livro Diário (sem CNPJ/nome no extrato), confira — "Pago via Caixa" merece atenção especial: a conta de crédito da baixa no Domínio provavelmente precisa ser trocada de 10 (banco) pra 5 (Caixa). Vermelho = CNPJ do fornecedor não está no cadastro — complete na tabela de cadastro acima e reprocesse. Campos são editáveis.</div>
   <div class="table-toolbar"><input type="search" value="${entradasTableState.filter}" placeholder="Filtrar por nº documento, nome ou CNPJ..." oninput="entradasTableState.filter=this.value; renderEntradasTable();"><span class="count">${indexed.length===rows.length?`${rows.length} linha(s)`:`${indexed.length} de ${rows.length}`}</span></div>
   <div class="table-wrap"><table class="preview"><thead><tr>
     <th></th>
@@ -1400,6 +1431,13 @@ function renderEntradasTable(){
     <button class="btn" onclick="downloadEntradasXlsx()">Baixar baixa_entradas.xlsx</button>
     <button class="btn ghost" onclick="downloadEntradasTxt()">Baixar baixa_ent.txt</button>
   </div>`;
+  if(entradasNaoEncontradosState.length){
+    html += `<div class="section-title" style="margin-top:22px;">Títulos em aberto SEM nenhuma correspondência (${entradasNaoEncontradosState.length})</div>
+    <div class="help">Nem CNPJ no extrato, nem nome de MEI, nem busca ampla, nem Livro Diário achou esses — confira manualmente antes de considerar o mês fechado (pode ter sido pago fora do período, por outro meio, ou simplesmente ainda não foi pago).</div>
+    <div class="table-wrap"><table class="preview"><thead><tr><th>Documento</th><th>Fornecedor</th><th>Vencimento</th><th>Valor</th></tr></thead><tbody>` +
+    entradasNaoEncontradosState.map(t=>`<tr><td>${t.documento}</td><td>${t.nome}</td><td>${fmtDateBR(t.vencimento)}</td><td class="num">${fmtBRL(saldoOuParcela(t))}</td></tr>`).join("") +
+    `</tbody></table></div>`;
+  }
   box.innerHTML = html;
 }
 function updateEntradaRow(i, field, val){
@@ -1511,9 +1549,15 @@ async function parseLivroDiario(file){
   const pages = await extractPdfAllLines(file);
   const allLines = pages.flat();
   const mapa = new Map();
+  const lista = []; // mesmas entradas, em array — usado pra buscar por Nº de documento na Baixa de Entradas
   const headerRe = /^(.+?) - ([\d.]+) - (\d+)$/;
+  // uma linha de histórico às vezes quebra em duas no PDF (o Nº da NF frequentemente
+  // cai sozinho na 2ª linha) — sem isso a busca por documento na Baixa de Entradas
+  // nunca acha nada, já que o número fica fora do texto capturado.
+  const naoContinuacao = /^(SINDICATO|Rua |Fone|Site|CaixaW|DATA|TRANSPORTE|TOTAL|SINDISA|\d{2}\/\d{2}\/\d{4})/i;
   let contaAtual = null, dataAtual = null;
-  for(const l of allLines){
+  for(let i=0;i<allLines.length;i++){
+    const l = allLines[i];
     const dm = l.match(/^(\d{2})\/(\d{2})\/(\d{4})\b/);
     if(dm && !/\d{2}\/\d{2}\/\d{4}\s*[-–]\s*\d{2}\/\d{2}\/\d{4}/.test(l)){
       dataAtual = {y:+dm[3], m:+dm[2], d:+dm[1]};
@@ -1526,25 +1570,55 @@ async function parseLivroDiario(file){
     if(!contaAtual || !dataAtual || !/^[34]\./.test(contaAtual.classif)) continue;
     const em = l.match(/^(.*?)\s+\d+\s+([\d.]+,\d{2})\s+([\d.]+,\d{2})\s*$/);
     if(!em) continue;
-    const [, hist, deb, cred] = em;
+    let [, hist, deb, cred] = em;
+    const next = allLines[i+1];
+    if(next && next.trim() && next.length<80 && !headerRe.test(next) && !/\d+\s+[\d.]+,\d{2}\s+[\d.]+,\d{2}\s*$/.test(next) && !naoContinuacao.test(next)){
+      hist += " " + next.trim();
+      i++; // consome a linha de continuação
+    }
     const valor = Math.max(parseBRL(deb)||0, parseBRL(cred)||0);
     if(valor<=0) continue;
+    const entry = {data:dataAtual, historico:hist.trim(), contaNome:contaAtual.nome, contaCodigo:contaAtual.codigo, valor};
     const key = `${dataAtual.y}-${dataAtual.m}-${dataAtual.d}|${valor.toFixed(2)}`;
     if(!mapa.has(key)) mapa.set(key, []);
-    mapa.get(key).push({historico:hist.trim(), contaNome:contaAtual.nome, contaCodigo:contaAtual.codigo});
+    mapa.get(key).push(entry);
+    lista.push(entry);
   }
-  return mapa;
+  return {mapa, lista};
 }
 function lookupLivroDiario(l){
   if(!livroDiarioState) return null;
   const key = `${l.data.y}-${l.data.m}-${l.data.d}|${Math.abs(l.valor).toFixed(2)}`;
-  const found = livroDiarioState.get(key);
+  const found = livroDiarioState.mapa.get(key);
   return found && found.length ? found[0] : null;
+}
+// Busca o Nº de documento (NF/recibo) do título dentro do histórico do Livro Diário —
+// mais confiável que data+valor pra achar título pago via Caixa (conta 5/163 no
+// Domínio), que nunca aparece no extrato bancário. Exige "NF"/"Recibo"/"Nº" logo
+// antes do número (com zeros à esquerda opcionais) — número sozinho é perigoso demais
+// pra documentos curtos tipo "6" ou "10" (bateria com qualquer data ou valor por aí).
+// valorEsperado é obrigatório: o mesmo Nº de NF se repete em parcelamentos (várias
+// parcelas, mesma nota) — sem conferir o valor, a primeira ocorrência encontrada seria
+// aplicada errado em todas as parcelas desse fornecedor. Cada entrada do Livro Diário
+// só pode "pagar" um título (marca _usado), pra não dar baixa duplicada.
+function buscarDocumentoLivroDiario(numeroDocumento, valorEsperado){
+  if(!livroDiarioState || !numeroDocumento) return null;
+  const num = numeroDocumento.replace(/^0+(?=\d)/,"");
+  if(num.length<2) return null; // documento de 1 dígito é ambíguo demais até com âncora
+  const re = new RegExp("(NF|Recibo|N[ºo°]?)\\.?\\s*0*"+num+"(?!\\d)", "i");
+  for(const entry of livroDiarioState.lista){
+    if(entry._usado) continue;
+    if(re.test(entry.historico) && Math.abs(entry.valor - valorEsperado) < 0.01){
+      entry._usado = true;
+      return entry;
+    }
+  }
+  return null;
 }
 wireDropzone("livroDiarioDrop","livroDiarioFile", async (f,d)=>{
   try{
     livroDiarioState = await parseLivroDiario(f);
-    markDropDone(d, `${f.name} (${livroDiarioState.size} combinação(ões) data+valor indexadas)`);
+    markDropDone(d, `${f.name} (${livroDiarioState.mapa.size} combinação(ões) data+valor indexadas)`);
   }catch(err){
     livroDiarioState = null;
     alert("Erro ao ler o Livro Diário: " + err.message);
