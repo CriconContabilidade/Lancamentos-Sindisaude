@@ -1132,9 +1132,15 @@ function rebuildCodigoIndex(){
   });
 }
 rebuildCodigoIndex();
+const STOPWORDS_RAZAO_SOCIAL = new Set(["LTDA","EPP","ME","EIRELI","EIRELE","COMERCIO","COM","DE","DA","DO","DOS","DAS","E","S/A","SA","IND","INDUSTRIA","SERVICOS","SERVICO"]);
 function findBestMatch(nome, db){
   const norm = normalizeText(nome);
-  const words = norm.split(/\s+/).filter(w=>w.length>2);
+  // sem filtrar palavras genéricas tipo "LTDA"/"COMERCIO", QUALQUER fornecedor sem
+  // código cadastrado batia por acaso com qualquer outro que também termine em "Ltda"
+  // (aconteceu de verdade: "Matarellus Variedades Ltda" resolvia pro CNPJ da "Cricon
+  // Contabilidade S/s Ltda" só pela palavra "LTDA" em comum) — daí pra frente as duas
+  // ficavam presas no mesmo grupo e nenhuma das duas era encontrada.
+  const words = norm.split(/\s+/).filter(w=>w.length>2 && !STOPWORDS_RAZAO_SOCIAL.has(w));
   let best=null, bestScore=0;
   Object.keys(db).forEach(key=>{
     const c = db[key];
@@ -1177,15 +1183,32 @@ function processarEntradas(){
     return;
   }
   const usarBuscaAmpla = document.getElementById("usarBuscaAmplaEntradas").checked;
-  const abertosPagar = contasPagarState.titulos.filter(t=> /^ABERT|^PARCIAL/.test(normalizeText(t.situacao)));
+  // CNPJs/CPFs que já têm padrão PRÓPRIO cadastrado na aba Lançamentos (keyword é o
+  // próprio documento, ex. CPF de uma pessoa física prestadora de serviço) — esses
+  // fornecedores são lançados direto como despesa pelo padrão, então o título dele em
+  // Contas a Pagar NUNCA deve ser baixado por aqui, senão o pagamento sai lançado duas
+  // vezes (despesa direta do padrão + baixa de título). Aconteceu de verdade com a
+  // Maristela Borges Benedet (assessoria de imprensa, CPF 76935213991): tem padrão pra
+  // conta 169 E título aberto em Contas a Pagar pro mesmo CPF, e a baixa achava o
+  // título dela tanto pelo CNPJ do extrato quanto pelo Nº da NF no Livro Diário.
+  const cnpjsComPadraoProprio = new Set();
+  padroesDB.forEach(p=>{
+    if(p.ignorar || p.debito==null || p.credito==null) return;
+    (p.keywords||[]).forEach(kw=>{ if(/^\d{11}$|^\d{14}$/.test(kw)) cnpjsComPadraoProprio.add(kw); });
+  });
+  contasPagarState.titulos.forEach(t=>{
+    const info = resolverCnpj(contasPagarState.empresaCnpj, "fornecedor", t.codigo, t.nome);
+    t._cnpjResolvido = info ? info.documento : null;
+    t._cnpjConfiavel = info ? info.confiavel : false;
+  });
+  const abertosPagar = contasPagarState.titulos.filter(t=>
+    /^ABERT|^PARCIAL/.test(normalizeText(t.situacao)) && !cnpjsComPadraoProprio.has(t._cnpjResolvido)
+  );
   const titulosPorCnpj = {};
   abertosPagar.forEach(t=>{
-    const info = resolverCnpj(contasPagarState.empresaCnpj, "fornecedor", t.codigo, t.nome);
     // mutamos o próprio título (não uma cópia) — precisa ser o MESMO objeto usado na
     // busca ampla mais abaixo, senão marcar "_used" aqui não impede a busca ampla de
     // reaproveitar o mesmo título por engano.
-    t._cnpjResolvido = info ? info.documento : null;
-    t._cnpjConfiavel = info ? info.confiavel : false;
     const chave = t._cnpjResolvido || `__semcnpj_${t.codigo}`;
     if(!titulosPorCnpj[chave]) titulosPorCnpj[chave] = [];
     titulosPorCnpj[chave].push(t);
@@ -1608,10 +1631,14 @@ function buscarFornecedorLivroDiario(nomeFornecedor){
   const palavras = normalizeText(nomeFornecedor).split(/\s+/).filter(w=>w.length>2 && !stopwords.has(w));
   if(!palavras.length) return null;
   const principais = palavras.slice(0,2); // 2 primeiras palavras significativas já ancoram o suficiente
+  // compara por prefixo (até 6 caracteres) em vez de exigir a palavra inteira — cobre
+  // variação de grafia/flexão comum entre o cadastro e o histórico do Livro Diário (ex.
+  // "Contabilidade" no nome do fornecedor vs "Contábeis" no histórico, ambos "CONTAB...").
+  const bate = (p, h) => h.includes(p) || (p.length>=5 && h.includes(p.slice(0,6)));
   for(const entry of livroDiarioState.lista){
     if(entry._usado) continue;
     const h = normalizeText(entry.historico);
-    if(principais.every(p=>h.includes(p))){
+    if(principais.every(p=>bate(p,h))){
       entry._usado = true;
       return entry;
     }
