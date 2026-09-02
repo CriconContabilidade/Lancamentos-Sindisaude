@@ -1252,26 +1252,72 @@ function processarEntradas(){
     });
   }
 
-  // Última tentativa: procura o Nº de documento de cada título ainda aberto no Livro
-  // Diário do cliente (se anexado lá em cima) — pega pagamentos por intermediário
-  // (Marketplace, PJBank, terceiro) que não têm CNPJ/nome reconhecível no extrato, E
-  // pagamentos feitos direto pelo Caixa (conta 5/163), que NUNCA passam pelo extrato
-  // bancário — por isso "pente fino": sem isso, título pago em espécie nunca seria
-  // encontrado de jeito nenhum, mesmo com o extrato e o cadastro perfeitos.
   if(livroDiarioState){
+    // Reserva qualquer entrada do Livro Diário que já corresponda (mesma data+valor) a
+    // uma linha JÁ resolvida por CNPJ/MEI/busca ampla — sem isso, as duas tentativas
+    // abaixo poderiam reaproveitar por engano um pagamento que já foi corretamente
+    // interpretado de outra forma (aconteceu de verdade com a Kolina: o mesmo trecho
+    // do Livro batia por nome com OUTRAS parcelas do fornecedor, mesmo já tendo sido
+    // usado pra pagar uma parcela específica via o extrato).
+    rows.forEach(r=>{
+      const m = livroDiarioState.lista.find(e=> !e._usado && e.data.y===r.databaixa.y && e.data.m===r.databaixa.m && e.data.d===r.databaixa.d && Math.abs(e.valor-r.valor)<0.01);
+      if(m) m._usado = true;
+    });
+
+    // Tentativa: procura o Nº de documento de cada título ainda aberto no Livro Diário
+    // — pega pagamentos por intermediário (Marketplace, PJBank, terceiro) que não têm
+    // CNPJ/nome reconhecível no extrato, E pagamentos feitos direto pelo Caixa (conta
+    // 5/163), que NUNCA passam pelo extrato bancário — por isso "pente fino": sem
+    // isso, título pago em espécie nunca seria encontrado de jeito nenhum.
     const extratoDatasValores = new Set(lancExtratoState.map(l=> `${l.data.y}-${l.data.m}-${l.data.d}|${Math.abs(l.valor).toFixed(2)}`));
-    abertosPagar.filter(t=>!t._used).forEach(t=>{
-      const achado = buscarDocumentoLivroDiario(t.documento, saldoOuParcela(t));
-      if(!achado) return;
+    function statusLivroDiario(achado){
       const noExtrato = extratoDatasValores.has(`${achado.data.y}-${achado.data.m}-${achado.data.d}|${achado.valor.toFixed(2)}`);
-      t._used = true;
+      return noExtrato
+        ? `Achado no Livro Diário ("${achado.historico}") — confira contra o extrato bancário antes de exportar`
+        : `PAGO VIA CAIXA — achado no Livro Diário ("${achado.historico}"), não tem linha correspondente no extrato bancário. Confira a conta de crédito da baixa no Domínio (provavelmente 5/Caixa, não 10/banco)`;
+    }
+    abertosPagar.filter(t=>!t._used).forEach(t=>{
       const info = resolverCnpj(contasPagarState.empresaCnpj, "fornecedor", t.codigo, t.nome);
       t._cnpjResolvido = info ? info.documento : null;
       t._cnpjConfiavel = info ? info.confiavel : false;
-      rows.push(buildEntradaRow(t, achado.data, "warn",
-        noExtrato
-          ? `Achado no Livro Diário ("${achado.historico}") — confira contra o extrato bancário antes de exportar`
-          : `PAGO VIA CAIXA — achado no Livro Diário ("${achado.historico}"), não tem linha correspondente no extrato bancário. Confira a conta de crédito da baixa no Domínio (provavelmente 5/Caixa, não 10/banco)`));
+      const achado = buscarDocumentoLivroDiario(t.documento, saldoOuParcela(t));
+      if(!achado) return;
+      t._used = true;
+      rows.push(buildEntradaRow(t, achado.data, "warn", statusLivroDiario(achado)));
+    });
+
+    // Última tentativa: quando o valor pago não bate com NENHUMA parcela isolada
+    // (pagamento parcial, ou que cobre mais de uma parcela de um lote de uma vez),
+    // acha o fornecedor pelo NOME no Livro Diário e aplica o valor pago nas parcelas
+    // ainda em aberto DESSE fornecedor por ORDEM DE VENCIMENTO, cheia por cheia, até
+    // zerar — a última pode sair parcial (só o valor efetivamente pago, o resto
+    // continua em aberto pro Domínio controlar).
+    const porFornecedor = {};
+    abertosPagar.filter(t=>!t._used).forEach(t=>{
+      const chave = t._cnpjResolvido || `__nome_${normalizeText(t.nome)}`;
+      if(!porFornecedor[chave]) porFornecedor[chave] = [];
+      porFornecedor[chave].push(t);
+    });
+    Object.values(porFornecedor).forEach(titulosForn=>{
+      titulosForn.sort((a,b)=> partsToDate(a.vencimento)-partsToDate(b.vencimento));
+      let achado = buscarFornecedorLivroDiario(titulosForn[0].nome);
+      while(achado){
+        let restanteCents = Math.round(achado.valor*100);
+        for(const t of titulosForn){
+          if(t._used || restanteCents<=0) continue;
+          const parcelaCents = Math.round(saldoOuParcela(t)*100);
+          if(restanteCents >= parcelaCents){
+            t._used = true;
+            restanteCents -= parcelaCents;
+            rows.push(buildEntradaRow(t, achado.data, "warn", `${statusLivroDiario(achado)} — baixa em ordem de vencimento (valor pago cobre mais de uma parcela)`));
+          } else {
+            t._used = true;
+            rows.push(buildEntradaRow(t, achado.data, "warn", `Baixa PARCIAL — ${statusLivroDiario(achado)}: pagou R$ ${fmtBRL(restanteCents/100)} dessa parcela de R$ ${fmtBRL(parcelaCents/100)}, o resto continua em aberto`, restanteCents/100));
+            restanteCents = 0;
+          }
+        }
+        achado = buscarFornecedorLivroDiario(titulosForn[0].nome);
+      }
     });
   }
 
@@ -1284,7 +1330,7 @@ function processarEntradas(){
   renderEntradasResult(rows, contasPagarState.empresaNome, contasPagarState.empresaCnpj);
 }
 let entradasNaoEncontradosState = [];
-function buildEntradaRow(titulo, dataBaixa, statusClass, statusText){
+function buildEntradaRow(titulo, dataBaixa, statusClass, statusText, valorOverride){
   const doc = titulo._cnpjResolvido;
   const cls = !doc ? "err" : (titulo._cnpjConfiavel===false ? "warn" : statusClass);
   const txt = !doc
@@ -1293,7 +1339,7 @@ function buildEntradaRow(titulo, dataBaixa, statusClass, statusText){
   return {
     numero: titulo.documento, cnpj: doc||"", nome: titulo.nome,
     vencimento: titulo.vencimento, databaixa: dataBaixa,
-    valor: saldoOuParcela(titulo), juros:0, multa:0, desconto:0,
+    valor: valorOverride!=null ? valorOverride : saldoOuParcela(titulo), juros:0, multa:0, desconto:0,
     statusClass: cls, statusText: txt, incluir: cls!=="err",
   };
 }
@@ -1534,6 +1580,26 @@ function buscarDocumentoLivroDiario(numeroDocumento, valorEsperado){
   for(const entry of livroDiarioState.lista){
     if(entry._usado) continue;
     if(re.test(entry.historico) && Math.abs(entry.valor - valorEsperado) < 0.01){
+      entry._usado = true;
+      return entry;
+    }
+  }
+  return null;
+}
+// Quando o valor pago não bate com NENHUMA parcela isolada (pagamento parcial, ou que
+// cobre mais de uma parcela de uma vez), acha o fornecedor pelo NOME no Livro Diário —
+// menos preciso que por Nº de documento, por isso só entra depois que a busca por
+// documento já não achou nada pro título.
+function buscarFornecedorLivroDiario(nomeFornecedor){
+  if(!livroDiarioState || !nomeFornecedor) return null;
+  const stopwords = new Set(["LTDA","EPP","ME","EIRELI","EIRELE","COMERCIO","COM","DE","DA","DO","DOS","DAS","E","S/A","SA","IND","INDUSTRIA","SERVICOS","SERVICO"]);
+  const palavras = normalizeText(nomeFornecedor).split(/\s+/).filter(w=>w.length>2 && !stopwords.has(w));
+  if(!palavras.length) return null;
+  const principais = palavras.slice(0,2); // 2 primeiras palavras significativas já ancoram o suficiente
+  for(const entry of livroDiarioState.lista){
+    if(entry._usado) continue;
+    const h = normalizeText(entry.historico);
+    if(principais.every(p=>h.includes(p))){
       entry._usado = true;
       return entry;
     }
