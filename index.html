@@ -1253,24 +1253,31 @@ function processarEntradas(){
   // do cadastrado pro fornecedor (CNPJ do MEI) — casa pelo NOME que também vem no
   // extrato, restrito aos fornecedores que têm título em aberto (nunca é uma busca
   // cega por valor, sempre ancorada numa identidade real da linha do extrato).
+  const semTituloRestantes = [];
   semTitulo.forEach(lump=>{
-    if(!lump.nome) return;
+    if(!lump.nome){ semTituloRestantes.push(lump); return; }
     const candidatos = {};
     Object.keys(titulosPorCnpj).forEach(k=>{ if(!k.startsWith("__semcnpj_")) candidatos[k] = clientesDB[k] || {razao_social:(titulosPorCnpj[k][0]||{}).nome}; });
     const m = findBestMatch(lump.nome, candidatos);
-    if(!m) return;
+    if(!m){ semTituloRestantes.push(lump); return; }
     const abertos = (titulosPorCnpj[m.documento]||[]).filter(t=>!t._used);
-    tentarCasar(lump, abertos, "warn", `Casado pelo nome "${lump.nome}" (documento no extrato diferente do cadastrado — confere se é a mesma pessoa/empresa, comum em MEI)`);
+    if(!tentarCasar(lump, abertos, "warn", `Casado pelo nome "${lump.nome}" (documento no extrato diferente do cadastrado — confere se é a mesma pessoa/empresa, comum em MEI)`)){
+      semTituloRestantes.push(lump);
+    }
   });
 
   if(usarBuscaAmpla){
     const todosAbertos = abertosPagar.filter(t=>!t._used);
     todosAbertos.forEach(a=>{ a._cents = Math.round(saldoOuParcela(a)*100); });
-    semCnpj.forEach(lump=>{
-      const pool = todosAbertos.filter(a=> !a._used && diffDays(lump.data, a.vencimento)>=-3 && diffDays(lump.data, a.vencimento)<=15);
+    // além dos débitos sem CNPJ (boleto/cheque/saque em branco), entram aqui também os
+    // que TÊM um CNPJ no extrato mas que não bateu com nenhum fornecedor — é o caso de
+    // pagamento por intermediário/marketplace (ex. "PIX Marketplace", PJBank), onde o
+    // CNPJ mostrado é do próprio intermediário, não do fornecedor de verdade.
+    [...semCnpj, ...semTituloRestantes].forEach(lump=>{
+      const pool = todosAbertos.filter(a=> !a._used && diffDays(lump.data, a.vencimento)>=-30 && diffDays(lump.data, a.vencimento)<=15);
       const found = dpSubsetExact(pool, Math.round(lump.valor*100));
       if(found){
-        found.forEach(a=>{ a._used=true; rows.push(buildEntradaRow(a, lump.data, "warn", `Casado só por valor exato (débito sem CNPJ/nome no extrato: "${lump.historico}") — confira se é mesmo esse fornecedor`)); });
+        found.forEach(a=>{ a._used=true; rows.push(buildEntradaRow(a, lump.data, "warn", `Casado só por valor exato (débito sem fornecedor reconhecível no extrato: "${lump.historico}") — confira se é mesmo esse fornecedor`)); });
       }
     });
   }
