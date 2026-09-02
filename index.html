@@ -1526,12 +1526,24 @@ async function parseLivroDiario(file){
   // cai sozinho na 2ª linha) — sem isso a busca por documento na Baixa de Entradas
   // nunca acha nada, já que o número fica fora do texto capturado.
   const naoContinuacao = /^(SINDICATO|Rua |Fone|Site|CaixaW|DATA|TRANSPORTE|TOTAL|SINDISA|\d{2}\/\d{2}\/\d{4})/i;
+  // o cabeçalho de cada página tem a data de IMPRESSÃO do relatório (topo direito),
+  // isolada numa linha só — igual ao formato das linhas de data de cada dia do livro.
+  // Sem isso, o parser confunde a data de impressão com um novo dia de lançamentos e
+  // "contamina" os lançamentos seguintes até a próxima data real aparecer. Usa o
+  // período declarado em "LIVRO DIÁRIO: dd/mm/aaaa à dd/mm/aaaa" pra só aceitar datas
+  // de dia dentro do período do relatório.
+  const periodoM = allLines.join("\n").match(/LIVRO\s+DI[ÁA]RIO[:\s]+(\d{2})\/(\d{2})\/(\d{4})\s*[àa]\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  const periodoIni = periodoM ? +periodoM[3]*10000 + +periodoM[2]*100 + +periodoM[1] : null;
+  const periodoFim = periodoM ? +periodoM[6]*10000 + +periodoM[5]*100 + +periodoM[4] : null;
   let contaAtual = null, dataAtual = null;
   for(let i=0;i<allLines.length;i++){
     const l = allLines[i];
     const dm = l.match(/^(\d{2})\/(\d{2})\/(\d{4})\b/);
     if(dm && !/\d{2}\/\d{2}\/\d{4}\s*[-–]\s*\d{2}\/\d{2}\/\d{4}/.test(l)){
-      dataAtual = {y:+dm[3], m:+dm[2], d:+dm[1]};
+      const candNum = +dm[3]*10000 + +dm[2]*100 + +dm[1];
+      if(periodoIni==null || (candNum>=periodoIni && candNum<=periodoFim)){
+        dataAtual = {y:+dm[3], m:+dm[2], d:+dm[1]};
+      }
     }
     const hm = l.match(headerRe);
     if(hm && !/^(Pagamento|Recebido|Transi|Rec\.|Cheque|Aplica|Despes|Transfer|Restitui)/i.test(l)){
