@@ -1203,27 +1203,12 @@ function processarEntradas(){
     return;
   }
   const usarBuscaAmpla = document.getElementById("usarBuscaAmplaEntradas").checked;
-  // CNPJs/CPFs que já têm padrão PRÓPRIO cadastrado na aba Lançamentos (keyword é o
-  // próprio documento, ex. CPF de uma pessoa física prestadora de serviço) — esses
-  // fornecedores são lançados direto como despesa pelo padrão, então o título dele em
-  // Contas a Pagar NUNCA deve ser baixado por aqui, senão o pagamento sai lançado duas
-  // vezes (despesa direta do padrão + baixa de título). Aconteceu de verdade com a
-  // Maristela Borges Benedet (assessoria de imprensa, CPF 76935213991): tem padrão pra
-  // conta 169 E título aberto em Contas a Pagar pro mesmo CPF, e a baixa achava o
-  // título dela tanto pelo CNPJ do extrato quanto pelo Nº da NF no Livro Diário.
-  const cnpjsComPadraoProprio = new Set();
-  padroesDB.forEach(p=>{
-    if(p.ignorar || p.debito==null || p.credito==null) return;
-    (p.keywords||[]).forEach(kw=>{ if(/^\d{11}$|^\d{14}$/.test(kw)) cnpjsComPadraoProprio.add(kw); });
-  });
   contasPagarState.titulos.forEach(t=>{
     const info = resolverCnpj(contasPagarState.empresaCnpj, "fornecedor", t.codigo, t.nome);
     t._cnpjResolvido = info ? info.documento : null;
     t._cnpjConfiavel = info ? info.confiavel : false;
   });
-  const abertosPagar = contasPagarState.titulos.filter(t=>
-    /^ABERT|^PARCIAL/.test(normalizeText(t.situacao)) && !cnpjsComPadraoProprio.has(t._cnpjResolvido)
-  );
+  const abertosPagar = contasPagarState.titulos.filter(t=> /^ABERT|^PARCIAL/.test(normalizeText(t.situacao)));
   const titulosPorCnpj = {};
   abertosPagar.forEach(t=>{
     // mutamos o próprio título (não uma cópia) — precisa ser o MESMO objeto usado na
@@ -1290,10 +1275,15 @@ function processarEntradas(){
     const todosAbertos = abertosPagar.filter(t=>!t._used);
     todosAbertos.forEach(a=>{ a._cents = Math.round(saldoOuParcela(a)*100); });
     // além dos débitos sem CNPJ (boleto/cheque/saque em branco), entram aqui também os
-    // que TÊM um CNPJ no extrato mas que não bateu com nenhum fornecedor — é o caso de
-    // pagamento por intermediário/marketplace (ex. "PIX Marketplace", PJBank), onde o
-    // CNPJ mostrado é do próprio intermediário, não do fornecedor de verdade.
-    [...semCnpj, ...semTituloRestantes].forEach(lump=>{
+    // que TÊM um CNPJ no extrato mas que não bateu com nenhum fornecedor — SÓ quando
+    // reconhecidamente é um intermediário/gateway de pagamento (Marketplace, PJBank,
+    // Mercado Pago...), nunca qualquer CNPJ desconhecido — senão um fornecedor de
+    // verdade que só ainda não está cadastrado (aconteceu com Chalton Schneider
+    // Advocacia) acaba casando por coincidência de valor com o título de OUTRO
+    // fornecedor completamente diferente.
+    const intermediarioRe = /MARKETPLACE|PJBANK|MERCADO\s*PAGO|MERCADOPAGO|MERCADO\s*LIVRE|MERCADOLIVRE|GETNET|STONE\b|CIELO|\bREDE\b|PAGSEGURO|PAG\s*SEGURO/i;
+    const semTituloIntermediario = semTituloRestantes.filter(lump=>intermediarioRe.test(lump.historico));
+    [...semCnpj, ...semTituloIntermediario].forEach(lump=>{
       const pool = todosAbertos.filter(a=> !a._used && diffDays(lump.data, a.vencimento)>=-30 && diffDays(lump.data, a.vencimento)<=15);
       const found = dpSubsetExact(pool, Math.round(lump.valor*100));
       if(found){
@@ -1687,11 +1677,24 @@ function processarLancamentos(){
   const linhas = lancExtratoState;
   const rows = [];
   let excluidas = 0;
+  let direcionadasBaixa = 0;
   // reseta pendências de uma rodada de processamento anterior que não chegou a ser
   // baixada — só confirma (grava) a última parcela quando o TXT é efetivamente baixado
   repassesAccDB.forEach(r=>{ delete r._ultimaParcelaPendente; });
   padroesDB.forEach(p=>{ p._occurCount = 0; if(p.parcelaState) delete p._parcelaPendente; });
   pendingEvolutivoCommit = null;
+  // fornecedores com padrão próprio por CPF/CNPJ (ex. Maristela Borges Benedet,
+  // assessoria de imprensa) mas que TAMBÉM têm título aberto em Contas a Pagar: a
+  // prioridade é a Baixa de Entradas — esse pagamento não entra aqui nos Lançamentos,
+  // pra não ficar lançado duas vezes (uma como despesa direta, outra como baixa de
+  // título). Só se aplica quando o relatório de Contas a Pagar já foi carregado.
+  const cnpjsComTituloAberto = new Set();
+  if(contasPagarState){
+    contasPagarState.titulos.filter(t=>/^ABERT|^PARCIAL/.test(normalizeText(t.situacao))).forEach(t=>{
+      const info = resolverCnpj(contasPagarState.empresaCnpj, "fornecedor", t.codigo, t.nome);
+      if(info) cnpjsComTituloAberto.add(info.documento);
+    });
+  }
   preAtribuirAguaCasan(linhas);
   preAtribuirInternetVivo(linhas);
   preAtribuirEnergiaCelesc(linhas);
@@ -1716,6 +1719,15 @@ function processarLancamentos(){
     }
     const p = matchPadrao(l);
     if(p && p.ignorar){ excluidas++; return; }
+
+    if(p){
+      const {cnpjcpf} = extrairCnpjNome(l.historico);
+      const padraoPeloProprioDocumento = cnpjcpf && (p.keywords||[]).some(kw=>kw===cnpjcpf);
+      if(padraoPeloProprioDocumento && cnpjsComTituloAberto.has(cnpjcpf)){
+        direcionadasBaixa++;
+        return;
+      }
+    }
 
     if(p){
       let d = p.debito, c = p.credito;
@@ -1744,7 +1756,7 @@ function processarLancamentos(){
     pendingEvolutivoCommit = {cfg, provisionadoAtual: evolutivoState.provisionadoAtual};
   }
   lancRowsState = rows;
-  renderLancResult(rows, excluidas);
+  renderLancResult(rows, excluidas, direcionadasBaixa);
 }
 // só confirma (grava) última parcela dos repasses ACC, parcela de padrões parcelados,
 // e provisionado da aplicação evolutivo, DEPOIS que o TXT dos lançamentos é baixado —
@@ -1768,10 +1780,12 @@ function confirmarParcelasELancamentos(){
 let lancRowsState = [];
 let lancTableState = makeTableState();
 let lancExcluidasState = 0;
-function renderLancResult(rows, excluidas){
+let lancDirecionadasBaixaState = 0;
+function renderLancResult(rows, excluidas, direcionadasBaixa){
   document.getElementById("resultLancCard").classList.remove("hidden");
   lancTableState = makeTableState();
   lancExcluidasState = excluidas;
+  lancDirecionadasBaixaState = direcionadasBaixa||0;
   renderLancTable();
 }
 function renderLancTable(){
@@ -1784,6 +1798,7 @@ function renderLancTable(){
     <div class="item"><div class="k">Linhas</div><div class="v">${rows.length}</div></div>
     <div class="item"><div class="k">Pra conferir</div><div class="v">${nFlag}</div></div>
     <div class="item"><div class="k">Excluídas (ignoradas)</div><div class="v">${lancExcluidasState}</div></div>
+    <div class="item"><div class="k">Direcionadas p/ Baixa de Entradas</div><div class="v">${lancDirecionadasBaixaState}</div></div>
   </div>
   <div class="help">Linhas em amarelo faltam completar (conta em branco, padrão não cadastrado) — edite direto na tabela ou cadastre um padrão novo e reprocesse.</div>
   <div class="table-toolbar"><input type="search" value="${lancTableState.filter}" placeholder="Filtrar por conta ou histórico..." oninput="lancTableState.filter=this.value; renderLancTable();"><span class="count">${indexed.length===rows.length?`${rows.length} linha(s)`:`${indexed.length} de ${rows.length}`}</span></div>
