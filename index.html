@@ -189,6 +189,15 @@ code{background:var(--paper);padding:1px 5px;border-radius:3px;font-family:'IBM 
     <div class="section-title">Cadastro — Repasses ACC (Asilo São Vicente de Paulo / Hospital São José)</div>
     <div class="help">Recebimentos via Pix pro CPF de cada funcionário — sempre D263 C10 (Asilo) ou D268 C10 (Hospital), histórico "PAGAMENTO REF. REPASSE ACC {ASILO/HOSPITAL} ... PARC. N PARA {NOME}". A parcela é POR PESSOA (uma pode estar mais adiantada que outra) e incrementa sozinha a cada mês processado com sucesso — corrija manualmente "Última Parcela" se pular um mês ou reprocessar. "Grupo" define qual convenção usar (<code>asilo</code> ou <code>hospital</code>). Clique em "+ Nova pessoa" pra adicionar alguém novo confirmado pelo usuário.</div>
     <div class="table-toolbar"><input type="search" placeholder="Filtrar por CPF ou nome..." oninput="repassesAccFiltro=this.value; renderRepassesTable();"></div>
+    <div class="table-toolbar">
+      <select id="grupoParcelaLote">
+        <option value="asilo">asilo</option>
+        <option value="hospital">hospital</option>
+        <option value="timbe">timbe</option>
+      </select>
+      <input type="number" id="valorParcelaLote" placeholder="Última parcela" style="width:120px">
+      <button class="btn small" onclick="aplicarParcelaLote()">Aplicar pro grupo inteiro</button>
+    </div>
     <div class="table-wrap"><table class="preview" id="repassesAccTable"></table></div>
     <div class="btn-row"><button class="btn" onclick="addRepasseAcc()">+ Nova pessoa</button></div>
   </div>
@@ -1035,6 +1044,17 @@ function updateRepasseAcc(i, field, val){
 function removeRepasseAcc(i){
   if(!confirm("Remover essa pessoa do cadastro de repasses ACC?")) return;
   repassesAccDB.splice(i,1);
+  saveRepassesAcc(repassesAccDB);
+  renderRepassesTable();
+}
+function aplicarParcelaLote(){
+  const grupo = document.getElementById("grupoParcelaLote").value;
+  const valor = parseInt(document.getElementById("valorParcelaLote").value);
+  if(isNaN(valor)){ alert("Preencha o número da última parcela."); return; }
+  const afetados = repassesAccDB.filter(r=>r.grupo===grupo);
+  if(!afetados.length){ alert(`Nenhuma pessoa cadastrada no grupo "${grupo}".`); return; }
+  if(!confirm(`Trocar a última parcela de ${afetados.length} pessoa(s) do grupo "${grupo}" pra ${valor}?`)) return;
+  afetados.forEach(r=>{ r.ultimaParcela = valor; });
   saveRepassesAcc(repassesAccDB);
   renderRepassesTable();
 }
