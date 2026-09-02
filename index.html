@@ -1774,11 +1774,15 @@ function downloadLancXlsx(){
   downloadXlsx("lancamentos.xlsx", [LANC_HEADER, ...lancRowsState.map(lancRowArray)], "Lancamentos");
 }
 function downloadLancTxt(){
-  const pendentes = lancRowsState.filter(r=>r.flag);
-  if(pendentes.length){
-    if(!confirm(`${pendentes.length} linha(s) ainda marcada(s) pra conferir (conta em branco ou padrão incompleto). Gerar mesmo assim?`)) return;
+  // o Domínio rejeita lançamento com um dos lados (débito ou crédito) em branco —
+  // "valor a crédito diferente do valor a débito" — então essas linhas nunca podem
+  // ir pro arquivo; ficam de fora até serem completadas à mão na tabela.
+  const completos = lancRowsState.filter(r=>r.debito!=null && r.credito!=null);
+  const incompletos = lancRowsState.filter(r=>r.debito==null || r.credito==null);
+  if(incompletos.length){
+    if(!confirm(`${incompletos.length} linha(s) sem débito ou crédito preenchido não serão incluídas no arquivo (o Domínio não aceita lançamento com um lado em branco) — complete-as na tabela e gere de novo depois. As outras ${completos.length} linha(s) serão baixadas normalmente. Continuar?`)) return;
   }
-  const linhas = lancRowsState.map(r=>{
+  const linhas = completos.map(r=>{
     const codEmp = document.getElementById("lancCodEmp").value.trim();
     const campos = [fmtDateBR(r.data), r.debito??"", r.credito??"", String(r.valor).replace(".",","), "", stripAccents(r.hist||r.complemento||""), r.iniciaLote??"", codEmp, "", ""];
     return campos.join(";");
