@@ -141,10 +141,6 @@ code{background:var(--paper);padding:1px 5px;border-radius:3px;font-family:'IBM 
         <div class="dropzone small-drop" id="contasPagarDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Pra Baixa de Entradas — lê sozinho a empresa (CNPJ) do cabeçalho</div><input type="file" id="contasPagarFile" accept="application/pdf"></div>
       </div>
       <div class="field">
-        <label>Fornecedores (PDF, opcional)</label>
-        <div class="dropzone small-drop" id="fornecedoresDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Pra Baixa de Entradas — só precisa reenviar quando tiver fornecedor novo</div><input type="file" id="fornecedoresFile" accept="application/pdf"></div>
-      </div>
-      <div class="field">
         <label>Código Emp. (Domínio)</label>
         <input type="text" id="lancCodEmp" value="356" style="padding:7px 9px;border:1.5px solid var(--rule-strong);border-radius:4px;font-size:13.5px;font-family:'IBM Plex Mono',monospace;background:var(--paper-raised);color:var(--ink);width:100%;">
       </div>
@@ -156,7 +152,7 @@ code{background:var(--paper);padding:1px 5px;border-radius:3px;font-family:'IBM 
   <!-- ===================== BAIXA DE ENTRADAS ===================== -->
   <div class="card">
     <div class="section-title">Baixa de Entradas</div>
-    <div class="help">Casa os débitos do extrato Sicoob (carregado acima) com o <b>Contas a Pagar por Fornecedor</b> (carregado acima) — pelo CNPJ/CPF que já vem embutido na maioria das linhas do extrato, resolvido pelo cadastro compartilhado (alimentado pelo relatório de <b>Fornecedores</b>, também acima). Quando um pagamento cobre mais de uma nota do mesmo fornecedor, soma automaticamente (busca exata, nunca aproxima). Pro que sobrar sem match (pago via intermediário, ou direto pelo <b>Caixa</b> — nunca aparece no extrato bancário), busca o Nº do documento no <b>Livro Diário CaixaW</b> (se anexado acima) — essas linhas ficam marcadas "PAGO VIA CAIXA" pra você conferir a conta de crédito certa no Domínio. Gera <code>baixa_ent.txt</code> pro Domínio.</div>
+    <div class="help">Casa os débitos do extrato Sicoob (carregado acima) com o <b>Contas a Pagar por Fornecedor</b> (carregado acima) — pelo CNPJ/CPF que já vem embutido na maioria das linhas do extrato, resolvido pelo cadastro de CNPJ compartilhado do escritório (mesmo das outras ferramentas — sincroniza sozinho, sem upload). Quando um pagamento cobre mais de uma nota do mesmo fornecedor, soma automaticamente (busca exata, nunca aproxima). Pro que sobrar sem match (pago via intermediário, ou direto pelo <b>Caixa</b> — nunca aparece no extrato bancário), busca o Nº do documento no <b>Livro Diário CaixaW</b> (se anexado acima) — essas linhas ficam marcadas "PAGO VIA CAIXA" pra você conferir a conta de crédito certa no Domínio. Gera <code>baixa_ent.txt</code> pro Domínio.</div>
     <div class="field" style="max-width:560px;margin-bottom:10px;">
       <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;text-transform:none;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);">
         <input type="checkbox" id="usarBuscaAmplaEntradas" style="margin-top:3px;">
@@ -1114,37 +1110,6 @@ function dpSubsetExact(pool, targetCents){
   return result ? result.map(i=>pool[i]) : null;
 }
 
-/* ---- Cadastro: CNPJ de Fornecedores (código do Contas a Pagar → CNPJ/CPF) ---- */
-const BR_UFS = {"ACRE":"AC","ALAGOAS":"AL","AMAPA":"AP","AMAZONAS":"AM","BAHIA":"BA","CEARA":"CE","DISTRITO FEDERAL":"DF","ESPIRITO SANTO":"ES","GOIAS":"GO","MARANHAO":"MA","MATO GROSSO DO SUL":"MS","MATO GROSSO":"MT","MINAS GERAIS":"MG","PARAIBA":"PB","PARANA":"PR","PERNAMBUCO":"PE","PIAUI":"PI","RIO DE JANEIRO":"RJ","RIO GRANDE DO NORTE":"RN","RIO GRANDE DO SUL":"RS","RONDONIA":"RO","RORAIMA":"RR","SANTA CATARINA":"SC","SAO PAULO":"SP","SERGIPE":"SE","TOCANTINS":"TO","PARA":"PA"};
-const BR_UF_NAMES = Object.keys(BR_UFS).sort((a,b)=>b.length-a.length);
-const DOC_RE = /(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{3}\.\d{3}\.\d{3}-\d{2})/;
-function splitCidadeUfPais(tail){
-  let t = normalizeText(tail).replace(/\bBRASIL\b\s*$/,"").trim();
-  t = t.replace(/^\d{4,12}\s+/,"");
-  for(const name of BR_UF_NAMES){
-    const re = new RegExp("\\s+"+name+"$");
-    if(re.test(t)) return {municipio: t.replace(re,"").trim(), uf: BR_UFS[name]};
-  }
-  return {municipio: t.trim(), uf: ""};
-}
-function parseFornecedoresPdf(allLines){
-  const out = [];
-  allLines.forEach(line=>{
-    if(!/BRASIL\s*$/i.test(line)) return;
-    const m = line.match(DOC_RE);
-    if(!m) return;
-    const before = line.slice(0, m.index).trim();
-    const after = line.slice(m.index + m[0].length).trim();
-    const codMatch = before.match(/^(\d{1,6})\s*(.*)$/);
-    const codigo = codMatch ? codMatch[1] : null;
-    const nome = (codMatch ? codMatch[2] : before).trim();
-    if(!nome || !codigo) return;
-    const {municipio, uf} = splitCidadeUfPais(after);
-    out.push({codigo, documento:onlyDigits(m[0]), tipo: onlyDigits(m[0]).length===14?"CNPJ":"CPF", razao_social:nome, endereco:"", municipio, uf, cep:""});
-  });
-  return out;
-}
-
 /* ---- Cadastro CNPJ compartilhado do escritório (mesmo projeto Firebase/coleção
    "clientes" que a Lançamentos Bari, Conversões Cibele e Baixas de Parcelas usam —
    ver módulo Firebase no fim do arquivo). Guardado localmente em
@@ -1206,44 +1171,6 @@ wireDropzone("contasPagarDrop","contasPagarFile", async (f,d)=>{
   }
   document.getElementById("processEntradasBtn").disabled = !contasPagarState;
 });
-wireDropzone("fornecedoresDrop","fornecedoresFile", async (f,d)=>{
-  const status = document.getElementById("entradasStatus");
-  status.classList.remove("hidden","err"); status.textContent = "Lendo PDF...";
-  try{
-    const pages = await extractPdfAllLines(f);
-    const allLines = pages.flat();
-    const cm = allLines.join("\n").match(CNPJ_HEADER_RE);
-    const empresaCnpj = cm ? onlyDigits(cm[1]) : (contasPagarState ? contasPagarState.empresaCnpj : null);
-    if(!empresaCnpj) throw new Error('Não achei "CNPJ:" no cabeçalho desse relatório — carregue o Contas a Pagar primeiro ou confere se é o PDF certo.');
-    const parsed = parseFornecedoresPdf(allLines);
-    if(!parsed.length) throw new Error("Não consegui reconhecer nenhum fornecedor nesse PDF.");
-    let addedCli=0, updatedCod=0;
-    const dirty = {};
-    parsed.forEach(p=>{
-      if(!p.documento) return;
-      if(!clientesDB[p.documento]){
-        clientesDB[p.documento] = {documento:p.documento, tipo:p.tipo, razao_social:p.razao_social, endereco:p.endereco, municipio:p.municipio, uf:p.uf, cep:"", codigos:{}, fonte:"importado-pdf-sindisaude"};
-        addedCli++;
-      }
-      if(!clientesDB[p.documento].codigos) clientesDB[p.documento].codigos = {};
-      const chave = `${empresaCnpj}_fornecedor`;
-      if(clientesDB[p.documento].codigos[chave] !== p.codigo){
-        clientesDB[p.documento].codigos[chave] = p.codigo;
-        updatedCod++;
-      }
-      dirty[p.documento] = clientesDB[p.documento];
-    });
-    saveClientes(clientesDB);
-    rebuildCodigoIndex();
-    if(window.sindisaudeCloud) window.sindisaudeCloud.pushManyClientes(dirty);
-    markDropDone(d, `${parsed.length} fornecedor(es) (${addedCli} novo(s), ${updatedCod} código(s) vinculado(s))`);
-    status.classList.add("hidden");
-    if(entradasRowsState.length) processarEntradas();
-  }catch(err){
-    status.classList.remove("hidden"); status.classList.add("err"); status.textContent = "Erro: " + err.message;
-  }
-});
-
 function processarEntradas(){
   if(!lancExtratoState || !lancExtratoState.length){
     alert("Carregue o extrato Sicoob (seção Lançamentos Contábeis acima) antes de processar a baixa.");
@@ -1361,7 +1288,7 @@ function buildEntradaRow(titulo, dataBaixa, statusClass, statusText){
   const doc = titulo._cnpjResolvido;
   const cls = !doc ? "err" : (titulo._cnpjConfiavel===false ? "warn" : statusClass);
   const txt = !doc
-    ? `CNPJ do fornecedor "${titulo.nome}" (código ${titulo.codigo}) não está no cadastro — envie o relatório de Fornecedores ou complete manualmente`
+    ? `CNPJ do fornecedor "${titulo.nome}" (código ${titulo.codigo}) não está no cadastro compartilhado — peça pro Claude importar o relatório de Fornecedores desse cliente, ou complete manualmente`
     : (titulo._cnpjConfiavel===false ? `${statusText} — CNPJ por nome aproximado, confira` : statusText);
   return {
     numero: titulo.documento, cnpj: doc||"", nome: titulo.nome,
