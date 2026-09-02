@@ -1018,12 +1018,12 @@ function renderRepassesTable(){
   const tbl = document.getElementById("repassesAccTable");
   const needle = normalizeText(repassesAccFiltro.trim());
   const rows = repassesAccDB.map((r,i)=>({r,i})).filter(({r})=> !needle || normalizeText(r.cpf+" "+r.nome).includes(needle));
-  tbl.innerHTML = `<thead><tr><th>Grupo</th><th>CPF</th><th>Nome</th><th>Última Parcela</th><th></th></tr></thead><tbody>` +
+  tbl.innerHTML = `<thead><tr><th>Última Parcela</th><th>Grupo</th><th>CPF</th><th>Nome</th><th></th></tr></thead><tbody>` +
     rows.map(({r,i})=>`<tr>
+      <td class="cell"><input class="cell-input" style="width:70px" value="${r.ultimaParcela}" onchange="updateRepasseAcc(${i},'ultimaParcela',this.value)"></td>
       <td class="cell"><input class="cell-input" style="width:70px" value="${r.grupo}" onchange="updateRepasseAcc(${i},'grupo',this.value)"></td>
       <td class="cell"><input class="cell-input" value="${r.cpf}" onchange="updateRepasseAcc(${i},'cpf',this.value)"></td>
       <td class="cell"><input class="cell-input wide" value="${r.nome}" onchange="updateRepasseAcc(${i},'nome',this.value)"></td>
-      <td class="cell"><input class="cell-input" style="width:70px" value="${r.ultimaParcela}" onchange="updateRepasseAcc(${i},'ultimaParcela',this.value)"></td>
       <td><button class="btn small ghost" onclick="removeRepasseAcc(${i})">✕</button></td>
     </tr>`).join("") + `</tbody>`;
 }
@@ -1616,12 +1616,16 @@ wireDropzone("livroDiarioDrop","livroDiarioFile", async (f,d)=>{
   }
 });
 
+let pendingEvolutivoCommit = null;
 function processarLancamentos(){
   const linhas = lancExtratoState;
   const rows = [];
   let excluidas = 0;
-  const repassesUsados = new Set();
-  padroesDB.forEach(p=>{ p._occurCount = 0; });
+  // reseta pendências de uma rodada de processamento anterior que não chegou a ser
+  // baixada — só confirma (grava) a última parcela quando o TXT é efetivamente baixado
+  repassesAccDB.forEach(r=>{ delete r._ultimaParcelaPendente; });
+  padroesDB.forEach(p=>{ p._occurCount = 0; if(p.parcelaState) delete p._parcelaPendente; });
+  pendingEvolutivoCommit = null;
   preAtribuirAguaCasan(linhas);
   preAtribuirInternetVivo(linhas);
   preAtribuirEnergiaCelesc(linhas);
@@ -1642,7 +1646,6 @@ function processarLancamentos(){
       const hist = cfgGrupo.hist(repasse.nome, parcela);
       rows.push({data:l.data, debito:cfgGrupo.debito, credito:cfgGrupo.credito, valor:Math.abs(l.valor), hist, complemento:null, iniciaLote:1, flag:false, statusText:`OK (repasse ACC ${repasse.grupo} — parcela ${parcela})`});
       repasse._ultimaParcelaPendente = parcela;
-      repassesUsados.add(repasse);
       return;
     }
     const p = matchPadrao(l);
@@ -1667,27 +1670,34 @@ function processarLancamentos(){
       : "Sem padrão cadastrado — complete a outra conta à mão";
     rows.push({data:l.data, debito:d, credito:c, valor:Math.abs(l.valor), hist:null, complemento:l.historico, iniciaLote:1, flag:true, statusText});
   });
-  // só confirma (incrementa) a última parcela das pessoas que realmente geraram lançamento nesta rodada
-  repassesUsados.forEach(r=>{ if(r._ultimaParcelaPendente!=null){ r.ultimaParcela = r._ultimaParcelaPendente; delete r._ultimaParcelaPendente; } });
-  if(repassesUsados.size){ saveRepassesAcc(repassesAccDB); renderRepassesTable(); }
-  // confirma (incrementa) a parcela de padrões com parcelamento próprio (ex. compra
-  // parcelada) só depois que o lançamento do mês realmente foi gerado
+  // Rendimento da aplicação evolutivo — lançamento avulso, não vem do extrato bancário.
+  if(evolutivoState){
+    const mesAno = `${String(evolutivoState.dataFim.m).padStart(2,"0")}/${evolutivoState.dataFim.y}`;
+    const cfg = evolutivoState.cfg;
+    rows.push({data:evolutivoState.dataFim, debito:cfg.debito, credito:cfg.credito, valor:evolutivoState.rendimentoMes, hist:`VALOR REF. RENDIMENTO DE APLICAÇÃO FINANCEIRA - ${cfg.hist} ${mesAno}`, complemento:null, iniciaLote:1, flag:false, statusText:"OK (rendimento do mês, regime de competência — extrato de aplicação)"});
+    pendingEvolutivoCommit = {cfg, provisionadoAtual: evolutivoState.provisionadoAtual};
+  }
+  lancRowsState = rows;
+  renderLancResult(rows, excluidas);
+}
+// só confirma (grava) última parcela dos repasses ACC, parcela de padrões parcelados,
+// e provisionado da aplicação evolutivo, DEPOIS que o TXT dos lançamentos é baixado —
+// senão só gerar/conferir na tela já ia consumir a parcela do mês
+function confirmarParcelasELancamentos(){
+  let repassesAlterados = false;
+  repassesAccDB.forEach(r=>{ if(r._ultimaParcelaPendente!=null){ r.ultimaParcela = r._ultimaParcelaPendente; delete r._ultimaParcelaPendente; repassesAlterados = true; } });
+  if(repassesAlterados){ saveRepassesAcc(repassesAccDB); renderRepassesTable(); }
+
   let algumPadraoComParcela = false;
   padroesDB.forEach(p=>{
     if(p._parcelaPendente!=null){ p.parcelaState.ultimaParcela = p._parcelaPendente; delete p._parcelaPendente; algumPadraoComParcela = true; }
   });
   if(algumPadraoComParcela) savePadroes(padroesDB);
-  // Rendimento da aplicação evolutivo — lançamento avulso, não vem do extrato bancário.
-  // Só confirma (salva) o "provisionado" deste mês como base do próximo DEPOIS de gerar
-  // a linha com sucesso — senão reprocessar o mesmo mês de novo perderia a base certa.
-  if(evolutivoState){
-    const mesAno = `${String(evolutivoState.dataFim.m).padStart(2,"0")}/${evolutivoState.dataFim.y}`;
-    const cfg = evolutivoState.cfg;
-    rows.push({data:evolutivoState.dataFim, debito:cfg.debito, credito:cfg.credito, valor:evolutivoState.rendimentoMes, hist:`VALOR REF. RENDIMENTO DE APLICAÇÃO FINANCEIRA - ${cfg.hist} ${mesAno}`, complemento:null, iniciaLote:1, flag:false, statusText:"OK (rendimento do mês, regime de competência — extrato de aplicação)"});
-    saveProvisionadoAnterior(cfg, evolutivoState.provisionadoAtual);
+
+  if(pendingEvolutivoCommit){
+    saveProvisionadoAnterior(pendingEvolutivoCommit.cfg, pendingEvolutivoCommit.provisionadoAtual);
+    pendingEvolutivoCommit = null;
   }
-  lancRowsState = rows;
-  renderLancResult(rows, excluidas);
 }
 let lancRowsState = [];
 let lancTableState = makeTableState();
@@ -1762,6 +1772,7 @@ function downloadLancTxt(){
     return campos.join(";");
   });
   downloadTextAnsi("lanctos.txt", linhas.join("\r\n"));
+  confirmarParcelasELancamentos();
 }
 </script>
 
