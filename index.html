@@ -134,31 +134,29 @@ code{background:var(--paper);padding:1px 5px;border-radius:3px;font-family:'IBM 
       </div>
       <div class="field">
         <label>Livro Diário CaixaW (PDF, opcional)</label>
-        <div class="dropzone small-drop" id="livroDiarioDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Sistema interno do cliente — usado só pra sugerir a categoria das linhas sem padrão</div><input type="file" id="livroDiarioFile" accept="application/pdf"></div>
+        <div class="dropzone small-drop" id="livroDiarioDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Sistema interno do cliente — sugere categoria das linhas sem padrão e ajuda a Baixa de Entradas</div><input type="file" id="livroDiarioFile" accept="application/pdf"></div>
+      </div>
+      <div class="field">
+        <label>Contas a Pagar por Fornecedor (PDF)</label>
+        <div class="dropzone small-drop" id="contasPagarDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Pra Baixa de Entradas — lê sozinho a empresa (CNPJ) do cabeçalho</div><input type="file" id="contasPagarFile" accept="application/pdf"></div>
+      </div>
+      <div class="field">
+        <label>Fornecedores (PDF, opcional)</label>
+        <div class="dropzone small-drop" id="fornecedoresDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Pra Baixa de Entradas — só precisa reenviar quando tiver fornecedor novo</div><input type="file" id="fornecedoresFile" accept="application/pdf"></div>
       </div>
       <div class="field">
         <label>Código Emp. (Domínio)</label>
         <input type="text" id="lancCodEmp" value="" style="padding:7px 9px;border:1.5px solid var(--rule-strong);border-radius:4px;font-size:13.5px;font-family:'IBM Plex Mono',monospace;background:var(--paper-raised);color:var(--ink);width:100%;">
       </div>
     </div>
-    <div class="btn-row"><button class="btn" id="processLancBtn" disabled onclick="processarLancamentos()">Processar</button></div>
+    <div class="btn-row"><button class="btn" id="processLancBtn" disabled onclick="processarLancamentos()">Processar Lançamentos</button></div>
     <div id="lancStatus" class="status-line hidden"></div>
   </div>
 
   <!-- ===================== BAIXA DE ENTRADAS ===================== -->
   <div class="card">
     <div class="section-title">Baixa de Entradas</div>
-    <div class="help">Casa os débitos do extrato Sicoob (o mesmo já carregado acima) com o relatório <b>Contas a Pagar por Fornecedor</b> — pelo CNPJ/CPF que já vem embutido na maioria das linhas do extrato, resolvido pelo cadastro abaixo (alimentado pelo relatório de <b>Fornecedores</b> do Domínio, que só precisa ser reenviado quando tiver fornecedor novo). Quando um pagamento cobre mais de uma nota do mesmo fornecedor, soma automaticamente (busca exata, nunca aproxima). Pro que sobrar sem match (pago via intermediário, ou direto pelo <b>Caixa</b> — nunca aparece no extrato bancário), busca o Nº do documento no <b>Livro Diário CaixaW</b> (se anexado lá em cima, na seção de Lançamentos) — essas linhas ficam marcadas "PAGO VIA CAIXA" pra você conferir a conta de crédito certa no Domínio. Gera <code>baixa_ent.txt</code> pro Domínio.</div>
-    <div class="field-row">
-      <div class="field">
-        <label>Contas a Pagar por Fornecedor (PDF)</label>
-        <div class="dropzone small-drop" id="contasPagarDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Lê sozinho a empresa (CNPJ) do cabeçalho do relatório</div><input type="file" id="contasPagarFile" accept="application/pdf"></div>
-      </div>
-      <div class="field">
-        <label>Fornecedores (PDF, opcional)</label>
-        <div class="dropzone small-drop" id="fornecedoresDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Só precisa reenviar quando tiver fornecedor novo/desconhecido</div><input type="file" id="fornecedoresFile" accept="application/pdf"></div>
-      </div>
-    </div>
+    <div class="help">Casa os débitos do extrato Sicoob (carregado acima) com o <b>Contas a Pagar por Fornecedor</b> (carregado acima) — pelo CNPJ/CPF que já vem embutido na maioria das linhas do extrato, resolvido pelo cadastro compartilhado (alimentado pelo relatório de <b>Fornecedores</b>, também acima). Quando um pagamento cobre mais de uma nota do mesmo fornecedor, soma automaticamente (busca exata, nunca aproxima). Pro que sobrar sem match (pago via intermediário, ou direto pelo <b>Caixa</b> — nunca aparece no extrato bancário), busca o Nº do documento no <b>Livro Diário CaixaW</b> (se anexado acima) — essas linhas ficam marcadas "PAGO VIA CAIXA" pra você conferir a conta de crédito certa no Domínio. Gera <code>baixa_ent.txt</code> pro Domínio.</div>
     <div class="field" style="max-width:560px;margin-bottom:10px;">
       <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;text-transform:none;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);">
         <input type="checkbox" id="usarBuscaAmplaEntradas" style="margin-top:3px;">
