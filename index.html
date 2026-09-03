@@ -464,6 +464,12 @@ const PADROES_SEED = [
   {keywords:["PASSAGEM PEDAGIO"], debito:102, credito:10, histFn:"pedagio", ignorar:false},
   {keywords:["00658236997"], debito:104, credito:10, histFn:"faxineiraLimpezaSede", ignorar:false},
   {keywords:["76935213991"], debito:169, credito:10, histFn:"assessoriaImprensa", ignorar:false},
+  // Equiparação salarial da remuneração dos presidentes — valor fixo mensal (R$743,00)
+  // pro mesmo CPF todo mês. Trava por valorIgual também: o Reginaldo tem OUTROS
+  // pagamentos pelo mesmo CPF em valores diferentes (ex. reembolso Hyper Graf), que não
+  // podem cair nesse padrão.
+  {keywords:["02654498980"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPresidente", nomeCompleto:"CLEBER RICARDO DA SILVA CANDIDO", ignorar:false},
+  {keywords:["76342000930"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPresidente", nomeCompleto:"REGINALDO KJHELIN COELHO", ignorar:false},
   // Excluído da automação a pedido do usuário — não entra no lançamento.
   {keywords:["57065825000101"], debito:null, credito:null, hist:"", ignorar:true},
   {keywords:["41762579000107"], debito:244, credito:10, hist:"PAGAMENTO REF. VALE TRANSPORTE DOS FUNCIONÁRIOS", ignorar:false},
@@ -634,6 +640,14 @@ const HIST_FUNCOES = {
   assessoriaImprensa(l){
     const {nome} = extrairCnpjNome(l.historico);
     return `PAGAMENTO REF. ASSESSORIA DE IMPRENSA - ${nome||""}`.trim();
+  },
+  // paga sempre no mês seguinte ao mês trabalhado (ex. pagamento em maio se refere à
+  // equiparação de abril) — por isso o histórico cita o mês ANTERIOR ao da linha do
+  // extrato, não o mês do próprio pagamento.
+  equiparacaoSalarialPresidente(l, p){
+    const mesAnt = l.data.m===1 ? {m:12, y:l.data.y-1} : {m:l.data.m-1, y:l.data.y};
+    const mesAnoStr = `${String(mesAnt.m).padStart(2,"0")}/${mesAnt.y}`;
+    return `PAGAMENTO REF. EQUIPARAÇÃO SALARIAL ${mesAnoStr} DA REMUNERAÇÃO DO PRESIDENTE ${p.nomeCompleto}`;
   },
   // "LIQUIDACAO BOLETO SICREDI CNPJ NOME CODIGO" — o código do boleto (só dígitos)
   // fica colado no fim sem separador, por isso sai fora do nome. Mês citado é sempre
