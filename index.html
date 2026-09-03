@@ -299,6 +299,22 @@ function formatCnpjCpf(raw){
   return (raw||"").toString().trim();
 }
 function cnpjCpfValido(raw){ const d = onlyDigits(raw); return d.length===11 || d.length===14; }
+// substituir innerHTML reconstrói o DOM inteiro, então um <input> de busca dentro dele
+// perde o foco a cada tecla digitada (o oninput chama o render de novo, que recria o
+// próprio input) — obrigava a clicar no campo de novo antes de cada letra. Isso guarda
+// o foco/posição do cursor do campo (pelo id) antes de trocar o innerHTML e devolve
+// pro elemento novo depois.
+function setInnerHtmlPreservandoFoco(box, html, focusId){
+  const ativo = document.activeElement;
+  const tinhaFoco = ativo && ativo.id === focusId;
+  const selStart = tinhaFoco ? ativo.selectionStart : null;
+  const selEnd = tinhaFoco ? ativo.selectionEnd : null;
+  box.innerHTML = html;
+  if(tinhaFoco){
+    const el = document.getElementById(focusId);
+    if(el){ el.focus(); if(selStart!=null && el.setSelectionRange) el.setSelectionRange(selStart, selEnd); }
+  }
+}
 function diffDays(a,b){ return Math.round((partsToDate(a)-partsToDate(b))/86400000); }
 function wireDropzone(dropId, inputId, onFile, opts){
   const drop = document.getElementById(dropId);
@@ -1416,7 +1432,7 @@ function renderEntradasTable(){
     <div class="item"><div class="k">Sem CNPJ cadastrado</div><div class="v">${nErr}</div></div>
   </div>
   <div class="help">Amarelo = casado só por valor ou pelo Livro Diário (sem CNPJ/nome no extrato), confira — "Pago via Caixa" merece atenção especial: a conta de crédito da baixa no Domínio provavelmente precisa ser trocada de 10 (banco) pra 5 (Caixa). Vermelho = CNPJ do fornecedor não está no cadastro — complete na tabela de cadastro acima e reprocesse. Campos são editáveis.</div>
-  <div class="table-toolbar"><input type="search" value="${entradasTableState.filter}" placeholder="Filtrar por nº documento, nome ou CNPJ..." oninput="entradasTableState.filter=this.value; renderEntradasTable();"><span class="count">${indexed.length===rows.length?`${rows.length} linha(s)`:`${indexed.length} de ${rows.length}`}</span></div>
+  <div class="table-toolbar"><input type="search" id="entradasFiltroInput" value="${entradasTableState.filter}" placeholder="Filtrar por nº documento, nome ou CNPJ..." oninput="entradasTableState.filter=this.value; renderEntradasTable();"><span class="count">${indexed.length===rows.length?`${rows.length} linha(s)`:`${indexed.length} de ${rows.length}`}</span></div>
   <div class="table-wrap"><table class="preview"><thead><tr>
     <th></th>
     ${sortTh('entradasTableState',entradasTableState,'numero','Nº Documento','renderEntradasTable')}
@@ -1454,7 +1470,7 @@ function renderEntradasTable(){
     entradasNaoEncontradosState.map((t,i)=>`<tr><td>${t.documento}</td><td>${t.nome}</td><td>${fmtDateBR(t.vencimento)}</td><td class="num">${fmtBRL(saldoOuParcela(t))}</td><td><button class="btn small ghost" onclick="adicionarNaoEncontradoNaBaixa(${i})">+ Adicionar à baixa</button></td></tr>`).join("") +
     `</tbody></table></div>`;
   }
-  box.innerHTML = html;
+  setInnerHtmlPreservandoFoco(box, html, "entradasFiltroInput");
 }
 function adicionarNaoEncontradoNaBaixa(idxNaoEncontrado){
   const titulo = entradasNaoEncontradosState[idxNaoEncontrado];
@@ -1821,7 +1837,7 @@ function renderLancTable(){
     <div class="item"><div class="k">Direcionadas p/ Baixa de Entradas</div><div class="v">${lancDirecionadasBaixaState}</div></div>
   </div>
   <div class="help">Linhas em amarelo faltam completar (conta em branco, padrão não cadastrado) — edite direto na tabela ou cadastre um padrão novo e reprocesse.</div>
-  <div class="table-toolbar"><input type="search" value="${lancTableState.filter}" placeholder="Filtrar por conta ou histórico..." oninput="lancTableState.filter=this.value; renderLancTable();"><span class="count">${indexed.length===rows.length?`${rows.length} linha(s)`:`${indexed.length} de ${rows.length}`}</span></div>
+  <div class="table-toolbar"><input type="search" id="lancFiltroInput" value="${lancTableState.filter}" placeholder="Filtrar por conta ou histórico..." oninput="lancTableState.filter=this.value; renderLancTable();"><span class="count">${indexed.length===rows.length?`${rows.length} linha(s)`:`${indexed.length} de ${rows.length}`}</span></div>
   <div class="table-wrap"><table class="preview"><thead><tr>
     ${sortTh('lancTableState',lancTableState,'data','Data','renderLancTable')}
     ${sortTh('lancTableState',lancTableState,'debito','Débito','renderLancTable')}
@@ -1844,7 +1860,7 @@ function renderLancTable(){
     <button class="btn" onclick="downloadLancXlsx()">Baixar lancamentos.xlsx</button>
     <button class="btn ghost" onclick="downloadLancTxt()">Baixar lanctos.txt</button>
   </div>`;
-  box.innerHTML = html;
+  setInnerHtmlPreservandoFoco(box, html, "lancFiltroInput");
 }
 function updateLancRow(i, field, val){
   const r = lancRowsState[i];
