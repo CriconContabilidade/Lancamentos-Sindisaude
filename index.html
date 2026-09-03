@@ -470,6 +470,14 @@ const PADROES_SEED = [
   // podem cair nesse padrão.
   {keywords:["02654498980"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPresidente", nomeCompleto:"CLEBER RICARDO DA SILVA CANDIDO", ignorar:false},
   {keywords:["76342000930"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPresidente", nomeCompleto:"REGINALDO KJHELIN COELHO", ignorar:false},
+  // Honorários advocatícios Chalton Schneider — paga em várias parcelas via PIX ao
+  // longo do mês, quase nunca batendo com o valor do título único aberto em Contas a
+  // Pagar (o título consolida o total, o PIX é adiantamento). Só entra aqui como
+  // "pagamento antecipado" quando a Baixa de Entradas NÃO acha um título correspondente
+  // pro valor pago — se algum dia bater um valor exato com o título, a prioridade
+  // continua sendo a Baixa de Entradas (mesma regra geral de CPF/CNPJ com padrão
+  // próprio).
+  {keywords:["64743675000103"], debito:288, credito:10, histFn:"honorariosAdvocaticiosAntecipado", nomeCompleto:"CHALTON SCHNEIDER ADVOCACIA", ignorar:false},
   // Excluído da automação a pedido do usuário — não entra no lançamento.
   {keywords:["57065825000101"], debito:null, credito:null, hist:"", ignorar:true},
   {keywords:["41762579000107"], debito:244, credito:10, hist:"PAGAMENTO REF. VALE TRANSPORTE DOS FUNCIONÁRIOS", ignorar:false},
@@ -648,6 +656,9 @@ const HIST_FUNCOES = {
     const mesAnt = l.data.m===1 ? {m:12, y:l.data.y-1} : {m:l.data.m-1, y:l.data.y};
     const mesAnoStr = `${String(mesAnt.m).padStart(2,"0")}/${mesAnt.y}`;
     return `PAGAMENTO REF. EQUIPARAÇÃO SALARIAL ${mesAnoStr} DA REMUNERAÇÃO DO PRESIDENTE ${p.nomeCompleto}`;
+  },
+  honorariosAdvocaticiosAntecipado(l, p){
+    return `PAGAMENTO ANTECIPADO REF. HONORARIOS ADVOCATICIOS - ${p.nomeCompleto}`;
   },
   // "LIQUIDACAO BOLETO SICREDI CNPJ NOME CODIGO" — o código do boleto (só dígitos)
   // fica colado no fim sem separador, por isso sai fora do nome. Mês citado é sempre
@@ -1770,13 +1781,31 @@ function processarLancamentos(){
   // assessoria de imprensa) mas que TAMBÉM têm título aberto em Contas a Pagar: a
   // prioridade é a Baixa de Entradas — esse pagamento não entra aqui nos Lançamentos,
   // pra não ficar lançado duas vezes (uma como despesa direta, outra como baixa de
-  // título). Só se aplica quando o relatório de Contas a Pagar já foi carregado.
-  const cnpjsComTituloAberto = new Set();
+  // título). Só suprime quando o PAGAMENTO ESPECÍFICO bate por valor com algum título
+  // (ou soma de títulos) dentro da janela de datas — não basta o fornecedor "ter algum
+  // título aberto" (ex. Chalton Schneider: título único consolidado que quase nunca bate
+  // com as parcelas de PIX pagas ao longo do mês, então o pagamento continua indo pro
+  // Lançamentos como antecipação). Só se aplica quando Contas a Pagar já foi carregado.
+  const titulosAbertosPorCnpj = {};
   if(contasPagarState){
     contasPagarState.titulos.filter(t=>/^ABERT|^PARCIAL/.test(normalizeText(t.situacao))).forEach(t=>{
       const info = resolverCnpj(contasPagarState.empresaCnpj, "fornecedor", t.codigo, t.nome);
-      if(info) cnpjsComTituloAberto.add(info.documento);
+      if(!info) return;
+      if(!titulosAbertosPorCnpj[info.documento]) titulosAbertosPorCnpj[info.documento] = [];
+      titulosAbertosPorCnpj[info.documento].push(t);
     });
+  }
+  function temTituloCorrespondente(cnpj, l){
+    const titulos = titulosAbertosPorCnpj[cnpj];
+    if(!titulos || !titulos.length) return false;
+    const abertos = titulos.filter(t=>!t._usadoLancamentos);
+    for(const [wlo,whi] of WINDOWS){
+      const pool = abertos.filter(t=> diffDays(l.data, t.vencimento)>=wlo && diffDays(l.data, t.vencimento)<=whi);
+      pool.forEach(t=>{ t._cents = Math.round(saldoOuParcela(t)*100); });
+      const found = dpSubsetExact(pool, Math.round(Math.abs(l.valor)*100));
+      if(found){ found.forEach(t=>{ t._usadoLancamentos = true; }); return true; }
+    }
+    return false;
   }
   preAtribuirAguaCasan(linhas);
   preAtribuirInternetVivo(linhas);
@@ -1806,7 +1835,7 @@ function processarLancamentos(){
     if(p){
       const {cnpjcpf} = extrairCnpjNome(l.historico);
       const padraoPeloProprioDocumento = cnpjcpf && (p.keywords||[]).some(kw=>kw===cnpjcpf);
-      if(padraoPeloProprioDocumento && cnpjsComTituloAberto.has(cnpjcpf)){
+      if(padraoPeloProprioDocumento && temTituloCorrespondente(cnpjcpf, l)){
         direcionadasBaixa++;
         return;
       }
