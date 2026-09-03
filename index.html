@@ -130,7 +130,7 @@ code{background:var(--paper);padding:1px 5px;border-radius:3px;font-family:'IBM 
       </div>
       <div class="field">
         <label>Extrato de Aplicação (PDF, opcional)</label>
-        <div class="dropzone small-drop" id="evolutivoDrop"><div class="big">Arraste o PDF aqui</div><div class="small">Evolutivo ou Automático (reconhece sozinho) — só pro lançamento de Rendimentos, um por vez</div><input type="file" id="evolutivoFile" accept="application/pdf"></div>
+        <div class="dropzone small-drop" id="evolutivoDrop"><div class="big">Arraste o(s) PDF(s) aqui</div><div class="small">Evolutivo e/ou Automático (reconhece sozinho) — pode soltar os dois juntos, só pro lançamento de Rendimentos</div><input type="file" id="evolutivoFile" accept="application/pdf" multiple></div>
       </div>
       <div class="field">
         <label>Livro Diário CaixaW (PDF, opcional)</label>
@@ -300,16 +300,21 @@ function formatCnpjCpf(raw){
 }
 function cnpjCpfValido(raw){ const d = onlyDigits(raw); return d.length===11 || d.length===14; }
 function diffDays(a,b){ return Math.round((partsToDate(a)-partsToDate(b))/86400000); }
-function wireDropzone(dropId, inputId, onFile){
+function wireDropzone(dropId, inputId, onFile, opts){
   const drop = document.getElementById(dropId);
   const input = document.getElementById(inputId);
+  const multi = opts && opts.multiple;
   drop.addEventListener("click", ()=>input.click());
-  input.addEventListener("change", ()=>{ if(input.files[0]) onFile(input.files[0], drop); });
+  input.addEventListener("change", ()=>{
+    if(!input.files.length) return;
+    if(multi){ Array.from(input.files).forEach(f=>onFile(f, drop)); } else if(input.files[0]) onFile(input.files[0], drop);
+  });
   drop.addEventListener("dragover", e=>{ e.preventDefault(); drop.classList.add("drag"); });
   drop.addEventListener("dragleave", ()=> drop.classList.remove("drag"));
   drop.addEventListener("drop", e=>{
     e.preventDefault(); drop.classList.remove("drag");
-    if(e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0], drop);
+    if(!e.dataTransfer.files.length) return;
+    if(multi){ Array.from(e.dataTransfer.files).forEach(f=>onFile(f, drop)); } else if(e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0], drop);
   });
 }
 function markDropDone(drop, label){
@@ -1521,7 +1526,9 @@ function loadProvisionadoAnterior(cfg){
   return raw!=null ? parseFloat(raw) : cfg.seed;
 }
 function saveProvisionadoAnterior(cfg, v){ localStorage.setItem(cfg.seedKey, String(v)); }
-let evolutivoState = null; // {rendimentoMes, provisionadoAtual, dataFim, cfg}
+// suporta Evolutivo e Automático carregados AO MESMO TEMPO — um por chave de produto,
+// não se sobrescrevem mais.
+let aplicacoesState = {}; // {EVOLUTIVO: {...}, AUTOMATICO: {...}}
 async function parseEvolutivo(file){
   const pages = await extractPdfAllLines(file);
   const allLines = pages.flat();
@@ -1541,17 +1548,22 @@ async function parseEvolutivo(file){
   const provisionadoAnterior = loadProvisionadoAnterior(cfg);
   if(provisionadoAnterior==null) throw new Error(`Ainda não tenho o "Rendimentos Provisionados" do mês anterior do ${cfg.hist} — preciso do extrato de aplicação do mês passado desse produto pra estabelecer a base (peça pro Claude inicializar, igual foi feito pro Evolutivo com o PDF de abril).`);
   const rendimentoMes = Math.round((capitalizados + (provisionadoAtual - provisionadoAnterior))*100)/100;
-  return {rendimentoMes, provisionadoAtual, dataFim, cfg};
+  return {produto, rendimentoMes, provisionadoAtual, dataFim, cfg};
+}
+function renderAplicacoesDropStatus(d){
+  const linhas = Object.values(aplicacoesState).map(a=> `${a.cfg.hist} — rendimento do mês: R$ ${fmtBRL(a.rendimentoMes)}`);
+  d.querySelector(".big").innerHTML = linhas.length ? "✓ " + linhas.join("<br>✓ ") : "Arraste o(s) PDF(s) aqui";
+  d.classList.toggle("done", linhas.length>0);
 }
 wireDropzone("evolutivoDrop","evolutivoFile", async (f,d)=>{
   try{
-    evolutivoState = await parseEvolutivo(f);
-    markDropDone(d, `${f.name} (${evolutivoState.cfg.hist} — rendimento do mês: R$ ${fmtBRL(evolutivoState.rendimentoMes)})`);
+    const r = await parseEvolutivo(f);
+    aplicacoesState[r.produto] = r;
+    renderAplicacoesDropStatus(d);
   }catch(err){
-    evolutivoState = null;
     alert("Erro ao ler o PDF da aplicação: " + err.message);
   }
-});
+}, {multiple:true});
 
 /* ---- Livro Diário CaixaW (opcional) — sistema interno do cliente, usado só pra
    SUGERIR a categoria de linhas do extrato que não bateram com nenhum padrão,
@@ -1680,7 +1692,7 @@ wireDropzone("livroDiarioDrop","livroDiarioFile", async (f,d)=>{
   }
 });
 
-let pendingEvolutivoCommit = null;
+let pendingAplicacoesCommit = [];
 function processarLancamentos(){
   const linhas = lancExtratoState;
   const rows = [];
@@ -1690,7 +1702,7 @@ function processarLancamentos(){
   // baixada — só confirma (grava) a última parcela quando o TXT é efetivamente baixado
   repassesAccDB.forEach(r=>{ delete r._ultimaParcelaPendente; });
   padroesDB.forEach(p=>{ p._occurCount = 0; if(p.parcelaState) delete p._parcelaPendente; });
-  pendingEvolutivoCommit = null;
+  pendingAplicacoesCommit = [];
   // fornecedores com padrão próprio por CPF/CNPJ (ex. Maristela Borges Benedet,
   // assessoria de imprensa) mas que TAMBÉM têm título aberto em Contas a Pagar: a
   // prioridade é a Baixa de Entradas — esse pagamento não entra aqui nos Lançamentos,
@@ -1756,13 +1768,15 @@ function processarLancamentos(){
       : "Sem padrão cadastrado — complete a outra conta à mão";
     rows.push({data:l.data, debito:d, credito:c, valor:Math.abs(l.valor), hist:null, complemento:l.historico, iniciaLote:1, flag:true, statusText});
   });
-  // Rendimento da aplicação evolutivo — lançamento avulso, não vem do extrato bancário.
-  if(evolutivoState){
-    const mesAno = `${String(evolutivoState.dataFim.m).padStart(2,"0")}/${evolutivoState.dataFim.y}`;
-    const cfg = evolutivoState.cfg;
-    rows.push({data:evolutivoState.dataFim, debito:cfg.debito, credito:cfg.credito, valor:evolutivoState.rendimentoMes, hist:`VALOR REF. RENDIMENTO DE APLICAÇÃO FINANCEIRA - ${cfg.hist} ${mesAno}`, complemento:null, iniciaLote:1, flag:false, statusText:"OK (rendimento do mês, regime de competência — extrato de aplicação)"});
-    pendingEvolutivoCommit = {cfg, provisionadoAtual: evolutivoState.provisionadoAtual};
-  }
+  // Rendimento das aplicações (Evolutivo e/ou Automático) — lançamento avulso, não vem
+  // do extrato bancário. Gera uma linha por produto carregado.
+  pendingAplicacoesCommit = [];
+  Object.values(aplicacoesState).forEach(a=>{
+    const mesAno = `${String(a.dataFim.m).padStart(2,"0")}/${a.dataFim.y}`;
+    const cfg = a.cfg;
+    rows.push({data:a.dataFim, debito:cfg.debito, credito:cfg.credito, valor:a.rendimentoMes, hist:`VALOR REF. RENDIMENTO DE APLICAÇÃO FINANCEIRA - ${cfg.hist} ${mesAno}`, complemento:null, iniciaLote:1, flag:false, statusText:"OK (rendimento do mês, regime de competência — extrato de aplicação)"});
+    pendingAplicacoesCommit.push({cfg, provisionadoAtual: a.provisionadoAtual});
+  });
   lancRowsState = rows;
   renderLancResult(rows, excluidas, direcionadasBaixa);
 }
@@ -1780,10 +1794,8 @@ function confirmarParcelasELancamentos(){
   });
   if(algumPadraoComParcela) savePadroes(padroesDB);
 
-  if(pendingEvolutivoCommit){
-    saveProvisionadoAnterior(pendingEvolutivoCommit.cfg, pendingEvolutivoCommit.provisionadoAtual);
-    pendingEvolutivoCommit = null;
-  }
+  pendingAplicacoesCommit.forEach(p=> saveProvisionadoAnterior(p.cfg, p.provisionadoAtual));
+  pendingAplicacoesCommit = [];
 }
 let lancRowsState = [];
 let lancTableState = makeTableState();
