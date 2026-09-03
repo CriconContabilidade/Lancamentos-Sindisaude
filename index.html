@@ -1313,6 +1313,39 @@ function processarEntradas(){
     });
   }
 
+  // Pagamento de fatura de cartão de crédito ("DEB.CTA.FATURA") — o extrato nunca traz
+  // CNPJ/nome do fornecedor (a fatura mistura vários fornecedores num valor só), mas
+  // quando o valor pago é um pouco MAIOR que um único título aberto (a fatura embutiu
+  // uma taxa/tarifa por cima da nota), casa mesmo assim e joga a diferença em Juros —
+  // sempre "confira", nunca inclui sozinho sem o usuário validar. Margem de até 15% do
+  // valor do título (ex. R$12,50 de taxa numa nota de R$245 = ~5%, dentro da margem).
+  const debitosFatura = lancExtratoState.filter(l=> l.valor<0 && /^DEB\.CTA\.FATURA\b/i.test(l.historico));
+  debitosFatura.forEach(l=>{
+    const valorPago = Math.abs(l.valor);
+    const valorPagoCents = Math.round(valorPago*100);
+    const candidatos = abertosPagar.filter(a=>{
+      if(a._used) return false;
+      // fatura de cartão costuma atrasar bem mais que boleto normal (o ciclo de
+      // fechamento/vencimento da fatura empurra o pagamento pra bem depois da compra) —
+      // dias>0 é pagamento DEPOIS do vencimento (atraso), janela mais larga pra esse
+      // lado (até 90 dias) do que as outras buscas.
+      const dias = diffDays(l.data, a.vencimento);
+      if(dias < -15 || dias > 90) return false;
+      const tituloCents = Math.round(saldoOuParcela(a)*100);
+      const diffCents = valorPagoCents - tituloCents;
+      if(diffCents < 0) return false; // título não pode ser maior que o valor pago
+      return diffCents <= Math.round(tituloCents*0.15);
+    });
+    if(!candidatos.length) return;
+    // entre candidatos empatados em valor, prioriza o vencimento mais antigo primeiro
+    // (mesma lógica de pagar em ordem de vencimento usada no resto da ferramenta)
+    candidatos.sort((a,b)=> partsToDate(a.vencimento)-partsToDate(b.vencimento) || (valorPagoCents-Math.round(saldoOuParcela(a)*100)) - (valorPagoCents-Math.round(saldoOuParcela(b)*100)));
+    const titulo = candidatos[0];
+    titulo._used = true;
+    const diferenca = Math.round((valorPago - saldoOuParcela(titulo))*100)/100;
+    rows.push(buildEntradaRow(titulo, l.data, "warn", `Casado com pagamento de fatura de cartão (débito "${l.historico}", R$ ${fmtBRL(valorPago)}) — diferença de R$ ${fmtBRL(diferenca)} pra cima do valor da nota foi pra Juros (provável taxa/tarifa embutida na fatura). Confira se é mesmo esse título`, valorPago, diferenca));
+  });
+
   if(livroDiarioState){
     // Reserva qualquer entrada do Livro Diário que já corresponda (mesma data+valor) a
     // uma linha JÁ resolvida por CNPJ/MEI/busca ampla — sem isso, as duas tentativas
@@ -1391,7 +1424,7 @@ function processarEntradas(){
   renderEntradasResult(rows, contasPagarState.empresaNome, contasPagarState.empresaCnpj);
 }
 let entradasNaoEncontradosState = [];
-function buildEntradaRow(titulo, dataBaixa, statusClass, statusText, valorOverride){
+function buildEntradaRow(titulo, dataBaixa, statusClass, statusText, valorOverride, jurosOverride){
   const doc = titulo._cnpjResolvido;
   const cls = !doc ? "err" : (titulo._cnpjConfiavel===false ? "warn" : statusClass);
   const txt = !doc
@@ -1400,7 +1433,7 @@ function buildEntradaRow(titulo, dataBaixa, statusClass, statusText, valorOverri
   return {
     numero: titulo.documento, cnpj: doc||"", nome: titulo.nome,
     vencimento: titulo.vencimento, databaixa: dataBaixa,
-    valor: valorOverride!=null ? valorOverride : saldoOuParcela(titulo), juros:0, multa:0, desconto:0,
+    valor: valorOverride!=null ? valorOverride : saldoOuParcela(titulo), juros:jurosOverride||0, multa:0, desconto:0,
     statusClass: cls, statusText: txt, incluir: cls!=="err",
   };
 }
