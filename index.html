@@ -1826,6 +1826,7 @@ function processarLancamentos(){
     rows.push({data:a.dataFim, debito:cfg.debito, credito:cfg.credito, valor:a.rendimentoMes, hist:`VALOR REF. RENDIMENTO DE APLICAÇÃO FINANCEIRA - ${cfg.hist} ${mesAno}`, complemento:null, iniciaLote:1, flag:false, statusText:"OK (rendimento do mês, regime de competência — extrato de aplicação)"});
     pendingAplicacoesCommit.push({cfg, provisionadoAtual: a.provisionadoAtual});
   });
+  rows.forEach(r=>{ if(r.incluir===undefined) r.incluir=true; });
   lancRowsState = rows;
   renderLancResult(rows, excluidas, direcionadasBaixa);
 }
@@ -1861,17 +1862,20 @@ function renderLancTable(){
   const box = document.getElementById("resultLancCard");
   const rows = lancRowsState;
   const nFlag = rows.filter(r=>r.flag).length;
+  const nIncl = rows.filter(r=>r.incluir).length;
   const indexed = filterSortRows(rows, lancTableState, r=>[r.debito,r.credito,r.hist,r.complemento]);
   let html = `<div class="section-title">Lançamentos — lanctos.txt</div>
   <div class="summary-row">
     <div class="item"><div class="k">Linhas</div><div class="v">${rows.length}</div></div>
+    <div class="item"><div class="k">Vão pro arquivo</div><div class="v">${nIncl}</div></div>
     <div class="item"><div class="k">Pra conferir</div><div class="v">${nFlag}</div></div>
     <div class="item"><div class="k">Excluídas (ignoradas)</div><div class="v">${lancExcluidasState}</div></div>
     <div class="item"><div class="k">Direcionadas p/ Baixa de Entradas</div><div class="v">${lancDirecionadasBaixaState}</div></div>
   </div>
-  <div class="help">Linhas em amarelo faltam completar (conta em branco, padrão não cadastrado) — edite direto na tabela ou cadastre um padrão novo e reprocesse.</div>
+  <div class="help">Linhas em amarelo faltam completar (conta em branco, padrão não cadastrado) — edite direto na tabela ou cadastre um padrão novo e reprocesse. Desmarque o checkbox pra não incluir uma linha no arquivo baixado.</div>
   <div class="table-toolbar"><input type="search" id="lancFiltroInput" value="${lancTableState.filter}" placeholder="Filtrar por conta ou histórico..." oninput="lancTableState.filter=this.value; renderLancTable();"><span class="count">${indexed.length===rows.length?`${rows.length} linha(s)`:`${indexed.length} de ${rows.length}`}</span></div>
   <div class="table-wrap"><table class="preview"><thead><tr>
+    <th></th>
     ${sortTh('lancTableState',lancTableState,'data','Data','renderLancTable')}
     ${sortTh('lancTableState',lancTableState,'debito','Débito','renderLancTable')}
     ${sortTh('lancTableState',lancTableState,'credito','Crédito','renderLancTable')}
@@ -1879,7 +1883,8 @@ function renderLancTable(){
     <th>Complemento</th><th>Status</th>
   </tr></thead><tbody>`;
   indexed.forEach(({row:r, idx:i})=>{
-    html += `<tr class="${r.flag?'flag':''}">
+    html += `<tr class="${r.flag?'flag':''} ${r.incluir?'':'excluded'}">
+      <td class="cell" style="text-align:center"><input type="checkbox" ${r.incluir?'checked':''} onchange="updateLancRow(${i},'incluir',this.checked)"></td>
       <td class="cell"><input class="cell-input" value="${fmtDateBR(r.data)}" onchange="updateLancRow(${i},'data',this.value)"></td>
       <td class="cell"><input class="cell-input" style="width:60px" value="${r.debito??''}" onchange="updateLancRow(${i},'debito',this.value)"></td>
       <td class="cell"><input class="cell-input" style="width:60px" value="${r.credito??''}" onchange="updateLancRow(${i},'credito',this.value)"></td>
@@ -1897,6 +1902,7 @@ function renderLancTable(){
 }
 function updateLancRow(i, field, val){
   const r = lancRowsState[i];
+  if(field==="incluir"){ r.incluir = val; return; }
   if(field==="data"){ const dt=brParts(val); if(dt) r.data=dt; }
   else if(field==="valor"){ const n=parseBRL(val); if(n!=null) r.valor=n; }
   else if(field==="debito" || field==="credito"){ r[field] = String(val).trim()===""?null:val.trim(); }
@@ -1909,14 +1915,16 @@ function lancRowArray(r){
   return [fmtDateBR(r.data), r.debito??"", r.credito??"", r.valor, "", r.hist||r.complemento||"", r.iniciaLote??"", codEmp, "", ""];
 }
 function downloadLancXlsx(){
-  downloadXlsx("lancamentos.xlsx", [LANC_HEADER, ...lancRowsState.map(lancRowArray)], "Lancamentos");
+  downloadXlsx("lancamentos.xlsx", [LANC_HEADER, ...lancRowsState.filter(r=>r.incluir).map(lancRowArray)], "Lancamentos");
 }
 function downloadLancTxt(){
   // o Domínio rejeita lançamento com um dos lados (débito ou crédito) em branco —
   // "valor a crédito diferente do valor a débito" — então essas linhas nunca podem
-  // ir pro arquivo; ficam de fora até serem completadas à mão na tabela.
-  const completos = lancRowsState.filter(r=>r.debito!=null && r.credito!=null);
-  const incompletos = lancRowsState.filter(r=>r.debito==null || r.credito==null);
+  // ir pro arquivo; ficam de fora até serem completadas à mão na tabela. Linhas
+  // desmarcadas (incluir=false) também ficam de fora, de propósito.
+  const marcadas = lancRowsState.filter(r=>r.incluir);
+  const completos = marcadas.filter(r=>r.debito!=null && r.credito!=null);
+  const incompletos = marcadas.filter(r=>r.debito==null || r.credito==null);
   if(incompletos.length){
     if(!confirm(`${incompletos.length} linha(s) sem débito ou crédito preenchido não serão incluídas no arquivo (o Domínio não aceita lançamento com um lado em branco) — complete-as na tabela e gere de novo depois. As outras ${completos.length} linha(s) serão baixadas normalmente. Continuar?`)) return;
   }
