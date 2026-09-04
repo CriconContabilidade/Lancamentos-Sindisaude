@@ -1118,6 +1118,10 @@ function addRepasseAcc(){
 }
 renderRepassesTable();
 function matchRepasseAcc(l){
+  // repasse ACC é sempre um pagamento SAINDO do banco pro CPF da pessoa — se o mesmo
+  // CPF mandar um PIX PRA o sindicato (entrada, valor positivo), não é repasse, é outra
+  // coisa (ex. devolução, doação); nunca deve cair nesse padrão.
+  if(l.valor>=0) return null;
   const m = String(l.historico||"").match(/(\d{14}|\d{11})/);
   if(!m) return null;
   return repassesAccDB.find(r=>r.cpf===m[1]) || null;
