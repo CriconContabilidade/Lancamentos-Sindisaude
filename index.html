@@ -478,6 +478,11 @@ const PADROES_SEED = [
   // podem cair nesse padrão.
   {keywords:["02654498980"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPisoEnfermagem", nomeCompleto:"CLEBER RICARDO DA SILVA CANDIDO", ignorar:false},
   {keywords:["76342000930"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPisoEnfermagem", nomeCompleto:"REGINALDO KJHELIN COELHO", ignorar:false},
+  // Verba de Representação Sindical — valor VARIÁVEL (por isso sem valorIgual, ao
+  // contrário da Equiparação Salarial acima). Precisa vir DEPOIS do padrão de
+  // R$743,00 fixo na lista: o primeiro que bater pelo CPF é o que vale, então o de
+  // valor fixo tem prioridade quando o valor realmente for 743,00.
+  {keywords:["02654498980"], debito:237, credito:10, histFn:"verbaRepresentacaoSindicalVariavel", nomeCompleto:"CLEBER RICARDO DA SILVA CANDIDO", ignorar:false},
   // Pensão alimentícia — desconto na folha do funcionário, pago direto pro
   // beneficiário. O extrato traz o CPF de QUEM RECEBE, não do funcionário — por isso o
   // padrão é ancorado no CPF do recebedor, com o nome do funcionário fixo no cadastro.
@@ -695,6 +700,12 @@ const HIST_FUNCOES = {
     const mesAnt = l.data.m===1 ? {m:12, y:l.data.y-1} : {m:l.data.m-1, y:l.data.y};
     const mesAnoStr = `${String(mesAnt.m).padStart(2,"0")}/${mesAnt.y}`;
     return `PAGAMENTO REF. DIFERENÇA EQUIPARAÇÃO SALARIAL DO PISO DE ENFERMAGEM ${p.nomeCompleto} ${mesAnoStr}`;
+  },
+  // valor variável, mês ANTERIOR ao pagamento (mesma lógica da Equiparação Salarial).
+  verbaRepresentacaoSindicalVariavel(l, p){
+    const mesAnt = l.data.m===1 ? {m:12, y:l.data.y-1} : {m:l.data.m-1, y:l.data.y};
+    const mesAnoStr = `${String(mesAnt.m).padStart(2,"0")}/${mesAnt.y}`;
+    return `PAGAMENTO REF. VERBA DE REPRESENTAÇÃO SINDICAL ${p.nomeCompleto} ${mesAnoStr}`;
   },
   honorariosAdvocaticiosAntecipado(l, p){
     return `PAGAMENTO ANTECIPADO REF. HONORARIOS ADVOCATICIOS - ${p.nomeCompleto}`;
