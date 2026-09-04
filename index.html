@@ -1330,7 +1330,20 @@ function processarEntradas(){
     const intermediarioRe = /MARKETPLACE|PJBANK|MERCADO\s*PAGO|MERCADOPAGO|MERCADO\s*LIVRE|MERCADOLIVRE|GETNET|STONE\b|CIELO|\bREDE\b|PAGSEGURO|PAG\s*SEGURO/i;
     const semTituloIntermediario = semTituloRestantes.filter(lump=>intermediarioRe.test(lump.historico));
     [...semCnpj, ...semTituloIntermediario].forEach(lump=>{
-      const pool = todosAbertos.filter(a=> !a._used && diffDays(lump.data, a.vencimento)>=-30 && diffDays(lump.data, a.vencimento)<=15);
+      let pool = todosAbertos.filter(a=> !a._used && diffDays(lump.data, a.vencimento)>=-30 && diffDays(lump.data, a.vencimento)<=15);
+      // uma linha SEM identidade nenhuma de fornecedor (saque, boleto/cheque em branco)
+      // só pode estar pagando UMA parcela por vez — nunca várias parcelas futuras
+      // somadas de uma mesma nota parcelada (aconteceu de verdade: um saque de
+      // R$3.000 "casou" por soma exata com 30 parcelas de R$100 da EA Comunicação,
+      // um contrato de 9 meses com vencimentos até 2027). Fica só a parcela mais
+      // próxima da data do pagamento por Nº de documento, as outras nem entram no
+      // pool de soma.
+      const porDocumento = {};
+      pool.forEach(a=>{
+        const atual = porDocumento[a.documento];
+        if(!atual || Math.abs(diffDays(lump.data,a.vencimento)) < Math.abs(diffDays(lump.data,atual.vencimento))) porDocumento[a.documento] = a;
+      });
+      pool = Object.values(porDocumento);
       const found = dpSubsetExact(pool, Math.round(lump.valor*100));
       if(found){
         found.forEach(a=>{ a._used=true; rows.push(buildEntradaRow(a, lump.data, "warn", `Casado só por valor exato (débito sem fornecedor reconhecível no extrato: "${lump.historico}") — confira se é mesmo esse fornecedor`)); });
