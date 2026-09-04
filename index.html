@@ -478,6 +478,12 @@ const PADROES_SEED = [
   // podem cair nesse padrão.
   {keywords:["02654498980"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPresidente", nomeCompleto:"CLEBER RICARDO DA SILVA CANDIDO", ignorar:false},
   {keywords:["76342000930"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPresidente", nomeCompleto:"REGINALDO KJHELIN COELHO", ignorar:false},
+  // Pensão alimentícia — desconto na folha do funcionário, pago direto pro
+  // beneficiário. O extrato traz o CPF de QUEM RECEBE, não do funcionário — por isso o
+  // padrão é ancorado no CPF do recebedor, com o nome do funcionário fixo no cadastro.
+  {keywords:["12646621906"], debito:237, credito:10, histFn:"pensaoAlimenticia", funcionario:"CLEBER RICARDO DA SILVA CANDIDO", recebedor:"LEONARDO HELEODORO CANDIDO", ignorar:false},
+  {keywords:["09074057977"], debito:237, credito:10, histFn:"pensaoAlimenticia", funcionario:"GABRIELA CAMPOS PNKOSKI", recebedor:"KAUA PNKOSKI", ignorar:false},
+  {keywords:["02263388940"], debito:237, credito:10, histFn:"pensaoAlimenticia", funcionario:"REGINALDO KJHELIN COELHO", recebedor:"ICARO", ignorar:false},
   // Honorários advocatícios Chalton Schneider — paga em várias parcelas via PIX ao
   // longo do mês, quase nunca batendo com o valor do título único aberto em Contas a
   // Pagar (o título consolida o total, o PIX é adiantamento). Só entra aqui como
@@ -679,6 +685,13 @@ const HIST_FUNCOES = {
   },
   honorariosAdvocaticiosAntecipado(l, p){
     return `PAGAMENTO ANTECIPADO REF. HONORARIOS ADVOCATICIOS - ${p.nomeCompleto}`;
+  },
+  // desconto na folha referente ao mês ANTERIOR ao pagamento (mesma lógica da
+  // equiparação salarial — a folha do mês trabalhado só fecha e paga no mês seguinte).
+  pensaoAlimenticia(l, p){
+    const mesAnt = l.data.m===1 ? {m:12, y:l.data.y-1} : {m:l.data.m-1, y:l.data.y};
+    const mesAnoStr = `${String(mesAnt.m).padStart(2,"0")}/${mesAnt.y}`;
+    return `PAGAMENTO REF. PENSAO ALIMENTICIA DE ${p.funcionario} PARA ${p.recebedor} ${mesAnoStr}`;
   },
   // ao contrário da equiparação salarial (paga no mês seguinte, cita o mês ANTERIOR),
   // a verba de representação cita o mês DA PRÓPRIA linha do extrato.
