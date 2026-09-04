@@ -566,10 +566,34 @@ const LIVRO_DIARIO_PADROES = [
 function loadPadroes(){
   const raw = localStorage.getItem("sindisaude_lancamentos_padroes");
   const salvo = raw ? JSON.parse(raw) : [];
-  const chaves = new Set(salvo.map(p=>(p.keywords||[]).join("|")));
-  const novos = PADROES_SEED.filter(p=>!chaves.has((p.keywords||[]).join("|"))).map(p=>({...p}));
-  const combinado = [...salvo, ...novos];
-  if(novos.length) savePadroes(combinado);
+  // O código (PADROES_SEED) é a fonte da verdade pros padrões que o Claude mantém —
+  // sincroniza SEMPRE a configuração (débito/crédito/histórico/valorIgual/etc.) com o
+  // que está no código, mesmo pra um padrão que já existia salvo no navegador. Sem
+  // isso, uma correção feita no código nunca chegava pro usuário que já tinha
+  // processado antes (a cópia salva "travava" na versão antiga pra sempre). A ÚNICA
+  // coisa preservada da cópia salva é o "parcelaState" (progresso de um parcelamento
+  // em andamento, ex. compra em N vezes) — isso não pode voltar pro começo a cada
+  // sincronização. Padrões que o usuário criou manualmente (não existem no
+  // PADROES_SEED) continuam intactos.
+  // a chave inclui valorIgual porque o MESMO CPF/CNPJ às vezes tem mais de um padrão
+  // legítimo, diferenciados só pelo valor exato (ex. Reginaldo: R$743 é equiparação
+  // salarial, R$49,30 é custas cartorárias — pagamentos completamente diferentes,
+  // ambos pelo CPF dele).
+  const chaveDe = p => (p.keywords||[]).join("|") + "||" + (p.valorIgual??"");
+  const porChave = new Map(salvo.map(p=>[chaveDe(p), p]));
+  PADROES_SEED.forEach(seedP=>{
+    const chave = chaveDe(seedP);
+    const existente = porChave.get(chave);
+    if(existente){
+      const parcelaStateAtual = existente.parcelaState;
+      Object.assign(existente, seedP);
+      if(parcelaStateAtual) existente.parcelaState = parcelaStateAtual;
+    } else {
+      porChave.set(chave, {...seedP});
+    }
+  });
+  const combinado = [...porChave.values()];
+  savePadroes(combinado);
   return combinado;
 }
 function savePadroes(list){ localStorage.setItem("sindisaude_lancamentos_padroes", JSON.stringify(list)); }
