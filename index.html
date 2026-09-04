@@ -546,6 +546,18 @@ const PADROES_SEED = [
   {keywords:["28700530002881"], debito:10, credito:62, histFn:"taxaNegocialComNome", ignorar:false},
   {keywords:["05886070966"], valorIgual:500.00, debito:10, credito:62, histFn:"taxaNegocialComNome", ignorar:false},
 ];
+// Padrões reconhecidos pelo TEXTO DO LIVRO DIÁRIO (não pelo extrato) — usados só quando
+// nenhum padrão de extrato bate, mas o Livro Diário tem uma linha correspondente (mesma
+// data+valor) cujo histórico contém a palavra-chave. As contas do Livro Diário do
+// cliente NÃO são as do Domínio, então aqui a conta vem sempre do cadastro abaixo, não
+// do Livro.
+const LIVRO_DIARIO_PADROES = [
+  {keyword:"BRINDE", conta:153, buildHist(achado){
+    const m = achado.historico.match(/compra de (.+?) brinde/i);
+    const item = m ? m[1].trim().toUpperCase() : "ITEM NÃO IDENTIFICADO";
+    return `PAGAMENTO REF. COMPRA DE ${item} PARA BRINDE`;
+  }},
+];
 function loadPadroes(){
   const raw = localStorage.getItem("sindisaude_lancamentos_padroes");
   const salvo = raw ? JSON.parse(raw) : [];
@@ -1928,10 +1940,26 @@ function processarLancamentos(){
       return;
     }
 
+    // Sem padrão pelo texto do EXTRATO — antes de cair no fallback manual, tenta achar
+    // uma linha correspondente (mesma data+valor) no Livro Diário e reconhecer alguma
+    // palavra-chave conhecida NO TEXTO DO LIVRO (ex. "brinde") pra montar o lançamento
+    // sozinho. As contas do Livro Diário do cliente NÃO são as mesmas do Domínio — por
+    // isso não usamos sugestao.contaCodigo direto, só o texto pra reconhecer a palavra.
+    const sugestao = lookupLivroDiario(l);
+    if(sugestao){
+      const hNorm = normalizeText(sugestao.historico);
+      const achadoPadraoLivro = LIVRO_DIARIO_PADROES.find(lp=>hNorm.includes(normalizeText(lp.keyword)));
+      if(achadoPadraoLivro){
+        const outraConta = achadoPadraoLivro.conta;
+        const d2 = l.valor<0 ? outraConta : 10;
+        const c2 = l.valor<0 ? 10 : outraConta;
+        rows.push({data:l.data, debito:d2, credito:c2, valor:Math.abs(l.valor), hist:achadoPadraoLivro.buildHist(sugestao), complemento:null, iniciaLote:1, flag:false, statusText:`OK (achado no Livro Diário: "${sugestao.historico}") — confira antes de exportar`});
+        return;
+      }
+    }
     // fallback genérico: só a conta banco, resto em branco pra completar à mão
     let d=null, c=null;
     if(l.valor>0) d=10; else c=10;
-    const sugestao = lookupLivroDiario(l);
     const statusText = sugestao
       ? `Sem padrão — Livro Diário sugere "${sugestao.contaNome}" (${sugestao.contaCodigo}): ${sugestao.historico}`
       : "Sem padrão cadastrado — complete a outra conta à mão";
