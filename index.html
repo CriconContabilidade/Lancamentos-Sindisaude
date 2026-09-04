@@ -171,6 +171,7 @@ code{background:var(--paper);padding:1px 5px;border-radius:3px;font-family:'IBM 
   <div class="card">
     <div class="section-title">Cadastro — Lançamentos Padrões</div>
     <div class="help">De-para de palavra-chave (do histórico do extrato) → contas de débito/crédito. Deixe Débito ou Crédito em branco pra usar só a conta banco (10) nesse lado, com o outro em branco pra completar à mão. Marque "Ignorar" pra excluir do lançamento. Clique em "+ Novo padrão" pra adicionar mais regras.</div>
+    <div class="table-toolbar"><input type="search" id="padroesFiltroInput" placeholder="Filtrar por palavra-chave ou histórico..." oninput="padroesTableState.filter=this.value; renderPadroesTable();"></div>
     <div class="table-wrap"><table class="preview" id="padroesTable"></table></div>
     <div class="btn-row">
       <button class="btn" onclick="addPadraoRow()">+ Novo padrão</button>
@@ -188,7 +189,7 @@ code{background:var(--paper);padding:1px 5px;border-radius:3px;font-family:'IBM 
   <div class="card">
     <div class="section-title">Cadastro — Repasses ACC (Asilo São Vicente de Paulo / Hospital São José)</div>
     <div class="help">Recebimentos via Pix pro CPF de cada funcionário — sempre D263 C10 (Asilo) ou D268 C10 (Hospital), histórico "PAGAMENTO REF. REPASSE ACC {ASILO/HOSPITAL} ... PARC. N PARA {NOME}". A parcela é POR PESSOA (uma pode estar mais adiantada que outra) e incrementa sozinha a cada mês processado com sucesso — corrija manualmente "Última Parcela" se pular um mês ou reprocessar. "Grupo" define qual convenção usar (<code>asilo</code> ou <code>hospital</code>). Clique em "+ Nova pessoa" pra adicionar alguém novo confirmado pelo usuário.</div>
-    <div class="table-toolbar"><input type="search" placeholder="Filtrar por CPF ou nome..." oninput="repassesAccFiltro=this.value; renderRepassesTable();"></div>
+    <div class="table-toolbar"><input type="search" placeholder="Filtrar por CPF ou nome..." oninput="repassesAccTableState.filter=this.value; renderRepassesTable();"></div>
     <div class="table-toolbar">
       <select id="grupoParcelaLote">
         <option value="asilo">asilo</option>
@@ -549,12 +550,19 @@ function loadPadroes(){
 }
 function savePadroes(list){ localStorage.setItem("sindisaude_lancamentos_padroes", JSON.stringify(list)); }
 let padroesDB = loadPadroes();
+let padroesTableState = makeTableState();
 function renderPadroesTable(){
   const tbl = document.getElementById("padroesTable");
+  const indexed = filterSortRows(padroesDB, padroesTableState, p=>[(p.keywords||[]).join(" "), p.hist, p.histFn]);
   tbl.innerHTML = `<thead><tr>
-      <th>Palavras-chave (separadas por vírgula)</th><th>Débito</th><th>Crédito</th><th>Histórico</th><th>Ignorar</th><th></th>
+      ${sortTh('padroesTableState',padroesTableState,'keywords','Palavras-chave (separadas por vírgula)','renderPadroesTable')}
+      ${sortTh('padroesTableState',padroesTableState,'debito','Débito','renderPadroesTable')}
+      ${sortTh('padroesTableState',padroesTableState,'credito','Crédito','renderPadroesTable')}
+      ${sortTh('padroesTableState',padroesTableState,'hist','Histórico','renderPadroesTable')}
+      ${sortTh('padroesTableState',padroesTableState,'ignorar','Ignorar','renderPadroesTable')}
+      <th></th>
     </tr></thead><tbody>` +
-    padroesDB.map((p,i)=>{
+    indexed.map(({row:p, idx:i})=>{
       const histCell = p.histFn
         ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);" title="Calculado pela função '${p.histFn}' a partir do texto original da linha — não editável aqui, só via JSON">Calculado (${p.histFn})</span>`
         : `<input class="cell-input wide" value="${p.hist||''}" onchange="updatePadrao(${i},'hist',this.value)">`;
@@ -1079,6 +1087,9 @@ const REPASSES_ACC_SEED = [
   {grupo:"timbe", cpf:"48002399900", nome:"MARIZA ZUCHINALI", ultimaParcela:14},
   {grupo:"timbe", cpf:"01823286941", nome:"ROSINEIA POLLI DAMIANI", ultimaParcela:14},
   {grupo:"timbe", cpf:"95094520920", nome:"MARIA TERESINHA DONADE", ultimaParcela:14},
+  // faltava no cadastro — achada no Livro Diário de junho/2026, "Parcela 16" em
+  // 03/06/2026 (competência maio/2026), então ultimaParcela:15 pra gerar a 16 certa.
+  {grupo:"asilo", cpf:"06482517994", nome:"MARIA CATARINA FREGULHA", ultimaParcela:15},
 ];
 function loadRepassesAcc(){
   const raw = localStorage.getItem("sindisaude_repasses_acc");
@@ -1091,13 +1102,18 @@ function loadRepassesAcc(){
 }
 function saveRepassesAcc(list){ localStorage.setItem("sindisaude_repasses_acc", JSON.stringify(list)); }
 let repassesAccDB = loadRepassesAcc();
-let repassesAccFiltro = "";
+let repassesAccTableState = makeTableState();
 function renderRepassesTable(){
   const tbl = document.getElementById("repassesAccTable");
-  const needle = normalizeText(repassesAccFiltro.trim());
-  const rows = repassesAccDB.map((r,i)=>({r,i})).filter(({r})=> !needle || normalizeText(r.cpf+" "+r.nome).includes(needle));
-  tbl.innerHTML = `<thead><tr><th>Última Parcela</th><th>Grupo</th><th>CPF</th><th>Nome</th><th></th></tr></thead><tbody>` +
-    rows.map(({r,i})=>`<tr>
+  const indexed = filterSortRows(repassesAccDB, repassesAccTableState, r=>[r.cpf, r.nome]);
+  tbl.innerHTML = `<thead><tr>
+    ${sortTh('repassesAccTableState',repassesAccTableState,'ultimaParcela','Última Parcela','renderRepassesTable')}
+    ${sortTh('repassesAccTableState',repassesAccTableState,'grupo','Grupo','renderRepassesTable')}
+    ${sortTh('repassesAccTableState',repassesAccTableState,'cpf','CPF','renderRepassesTable')}
+    ${sortTh('repassesAccTableState',repassesAccTableState,'nome','Nome','renderRepassesTable')}
+    <th></th>
+  </tr></thead><tbody>` +
+    indexed.map(({row:r, idx:i})=>`<tr>
       <td class="cell"><input class="cell-input" style="width:70px" value="${r.ultimaParcela}" onchange="updateRepasseAcc(${i},'ultimaParcela',this.value)"></td>
       <td class="cell"><input class="cell-input" style="width:70px" value="${r.grupo}" onchange="updateRepasseAcc(${i},'grupo',this.value)"></td>
       <td class="cell"><input class="cell-input" value="${r.cpf}" onchange="updateRepasseAcc(${i},'cpf',this.value)"></td>
