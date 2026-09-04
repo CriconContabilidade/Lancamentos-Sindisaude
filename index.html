@@ -485,6 +485,7 @@ const PADROES_SEED = [
   // continua sendo a Baixa de Entradas (mesma regra geral de CPF/CNPJ com padrão
   // próprio).
   {keywords:["64743675000103"], debito:288, credito:10, histFn:"honorariosAdvocaticiosAntecipado", nomeCompleto:"CHALTON SCHNEIDER ADVOCACIA", ignorar:false},
+  {keywords:["02131384920"], debito:237, credito:10, histFn:"verbaRepresentacaoSindical", nomeCompleto:"GABRIELA CAMPOS PNKOSKI", ignorar:false},
   // Excluído da automação a pedido do usuário — não entra no lançamento.
   {keywords:["57065825000101"], debito:null, credito:null, hist:"", ignorar:true},
   {keywords:["41762579000107"], debito:244, credito:10, hist:"PAGAMENTO REF. VALE TRANSPORTE DOS FUNCIONÁRIOS", ignorar:false},
@@ -666,6 +667,12 @@ const HIST_FUNCOES = {
   },
   honorariosAdvocaticiosAntecipado(l, p){
     return `PAGAMENTO ANTECIPADO REF. HONORARIOS ADVOCATICIOS - ${p.nomeCompleto}`;
+  },
+  // ao contrário da equiparação salarial (paga no mês seguinte, cita o mês ANTERIOR),
+  // a verba de representação cita o mês DA PRÓPRIA linha do extrato.
+  verbaRepresentacaoSindical(l, p){
+    const mesAnoStr = `${String(l.data.m).padStart(2,"0")}/${l.data.y}`;
+    return `PAGAMENTO REF. VERBA DE REPRESENTAÇÃO - ${p.nomeCompleto} ${mesAnoStr}`;
   },
   // "LIQUIDACAO BOLETO SICREDI CNPJ NOME CODIGO" — o código do boleto (só dígitos)
   // fica colado no fim sem separador, por isso sai fora do nome. Mês citado é sempre
