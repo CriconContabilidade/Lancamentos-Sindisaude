@@ -1541,6 +1541,8 @@ function renderEntradasTable(){
   const nCaixa = rows.filter(r=>(r.statusText||"").startsWith("PAGO VIA CAIXA")).length;
   const nIncl = rows.filter(r=>r.incluir).length;
   const indexed = filterSortRows(rows, entradasTableState, r=>[r.numero,r.nome,r.cnpj]);
+  const elegiveisEntradas = indexed.filter(({row:r})=>r.numero);
+  const todosMarcadosEntradas = elegiveisEntradas.length>0 && elegiveisEntradas.every(({row:r})=>r.incluir);
   let html = `<div class="section-title">${empresaNome} — baixa_ent.txt</div>
   <div class="summary-row">
     <div class="item"><div class="k">Linhas</div><div class="v">${rows.length}</div></div>
@@ -1553,7 +1555,7 @@ function renderEntradasTable(){
   <div class="help">Amarelo = casado só por valor ou pelo Livro Diário (sem CNPJ/nome no extrato), confira — "Pago via Caixa" merece atenção especial: a conta de crédito da baixa no Domínio provavelmente precisa ser trocada de 10 (banco) pra 5 (Caixa). Vermelho = CNPJ do fornecedor não está no cadastro — complete na tabela de cadastro acima e reprocesse. Campos são editáveis.</div>
   <div class="table-toolbar"><input type="search" id="entradasFiltroInput" value="${entradasTableState.filter}" placeholder="Filtrar por nº documento, nome ou CNPJ..." oninput="entradasTableState.filter=this.value; renderEntradasTable();"><span class="count">${indexed.length===rows.length?`${rows.length} linha(s)`:`${indexed.length} de ${rows.length}`}</span></div>
   <div class="table-wrap"><table class="preview"><thead><tr>
-    <th style="text-align:center"><input type="checkbox" title="Marcar/desmarcar todos os filtrados" onchange="toggleIncluirTodosEntradas(this.checked)"></th>
+    <th style="text-align:center"><input type="checkbox" ${todosMarcadosEntradas?'checked':''} title="Marcar/desmarcar todos os filtrados" onchange="toggleIncluirTodosEntradas(this.checked)"></th>
     ${sortTh('entradasTableState',entradasTableState,'numero','Nº Documento','renderEntradasTable')}
     ${sortTh('entradasTableState',entradasTableState,'cnpj','CNPJ/CPF','renderEntradasTable')}
     ${sortTh('entradasTableState',entradasTableState,'nome','Nome','renderEntradasTable')}
@@ -1973,6 +1975,7 @@ function renderLancTable(){
   const nFlag = rows.filter(r=>r.flag).length;
   const nIncl = rows.filter(r=>r.incluir).length;
   const indexed = filterSortRows(rows, lancTableState, r=>[r.debito,r.credito,r.hist,r.complemento]);
+  const todosMarcadosLanc = indexed.length>0 && indexed.every(({row:r})=>r.incluir);
   let html = `<div class="section-title">Lançamentos — lanctos.txt</div>
   <div class="summary-row">
     <div class="item"><div class="k">Linhas</div><div class="v">${rows.length}</div></div>
@@ -1984,7 +1987,7 @@ function renderLancTable(){
   <div class="help">Linhas em amarelo faltam completar (conta em branco, padrão não cadastrado) — edite direto na tabela ou cadastre um padrão novo e reprocesse. Desmarque o checkbox pra não incluir uma linha no arquivo baixado.</div>
   <div class="table-toolbar"><input type="search" id="lancFiltroInput" value="${lancTableState.filter}" placeholder="Filtrar por conta ou histórico..." oninput="lancTableState.filter=this.value; renderLancTable();"><span class="count">${indexed.length===rows.length?`${rows.length} linha(s)`:`${indexed.length} de ${rows.length}`}</span></div>
   <div class="table-wrap"><table class="preview"><thead><tr>
-    <th style="text-align:center"><input type="checkbox" title="Marcar/desmarcar todos os filtrados" onchange="toggleIncluirTodosLanc(this.checked)"></th>
+    <th style="text-align:center"><input type="checkbox" ${todosMarcadosLanc?'checked':''} title="Marcar/desmarcar todos os filtrados" onchange="toggleIncluirTodosLanc(this.checked)"></th>
     ${sortTh('lancTableState',lancTableState,'data','Data','renderLancTable')}
     ${sortTh('lancTableState',lancTableState,'debito','Débito','renderLancTable')}
     ${sortTh('lancTableState',lancTableState,'credito','Crédito','renderLancTable')}
