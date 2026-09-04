@@ -850,13 +850,20 @@ const GPS_AUTONOMOS_ORDEM = [
 const GPS_VALOR_MAIOR = {nome:"FABIO BELUCCO CAMILO", valorGuia:391.14};
 function buildInssAutonomoEntries(l, nome, valorGuia){
   const totalPago = Math.abs(l.valor);
-  const diferente = Math.round((totalPago - valorGuia)*100)/100 !== 0;
+  const diferenca = Math.round((totalPago - valorGuia)*100)/100;
   const hist = `PAGAMENTO REF. INSS AUTONOMO DO MEMBRO ${nome}`;
-  const statusText = diferente
-    ? `Valor pago (R$ ${fmtBRL(totalPago)}) diferente do valor de guia esperado (R$ ${fmtBRL(valorGuia)}) — confira se é atraso/reajuste antes de exportar`
-    : "OK (INSS autônomo)";
+  // valor pago igual ao valor "normal" da guia — lançamento único, sem juros.
+  if(diferenca===0){
+    return [{data:l.data, debito:78, credito:10, valor:totalPago, hist, complemento:null, iniciaLote:1, flag:false, statusText:"OK (INSS autônomo)"}];
+  }
+  // pago a mais que o valor da guia (atraso) — separa a diferença em Juros (145); o
+  // valor "original" da guia (que o usuário informou) sempre vai pra 78.
+  const negativa = diferenca < 0;
+  const statusText = negativa ? "Diferença negativa — valor da guia (370,60/391,14) provavelmente desatualizado, confira" : "OK (INSS autônomo, com juros de atraso)";
   return [
-    {data:l.data, debito:78, credito:10, valor:totalPago, hist, complemento:null, iniciaLote:1, flag:diferente, statusText},
+    {data:l.data, debito:78, credito:null, valor:valorGuia, hist, complemento:null, iniciaLote:1, flag:negativa, statusText},
+    {data:l.data, debito:145, credito:null, valor:diferenca, hist, complemento:null, iniciaLote:null, flag:negativa, statusText},
+    {data:l.data, debito:null, credito:10, valor:totalPago, hist, complemento:null, iniciaLote:null, flag:false, statusText:"OK (INSS autônomo, com juros de atraso)"},
   ];
 }
 function isDebitoGps(l){ return normalizeText(l.historico).startsWith("DEBITO GPS"); }
