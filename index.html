@@ -832,13 +832,13 @@ function preAtribuirAguaCasan(linhas){ preAtribuirPorValor(linhas, "825084330001
 function preAtribuirInternetVivo(linhas){ preAtribuirPorValor(linhas, "02558157000162", "_papelVivo", ["sede","movel"]); }
 function preAtribuirEnergiaCelesc(linhas){ preAtribuirPorValor(linhas, "08336783000190", "_papelCelesc", ["subsede","sede"]); }
 
-/* ---- GPS de autônomos (INSS) — lançamento composto quando pago em atraso ----
-   "DEBITO GPS" no extrato não traz nome nem CPF, só o valor pago (guia + juros de
-   atraso). O valor da guia "normal" (370,60 ou 391,14) diferencia o grupo de pessoas
-   — dentro do mesmo grupo, várias linhas idênticas só se diferenciam pela ordem de
-   aparição (confirmado com o usuário antes de implementar). Cada linha vira um lote de
-   3 pernas: D241 (valor da guia), D145 (diferença/juros), C10 (valor total pago) —
-   fecha sozinho porque D241+D145 = C10.
+/* ---- GPS de autônomos (INSS) — lançamento único ----
+   "DEBITO GPS" no extrato não traz nome nem CPF, só o valor pago. O valor da guia
+   "normal" (370,60 ou 391,14) diferencia o grupo de pessoas — dentro do mesmo grupo,
+   várias linhas idênticas só se diferenciam pela ordem de aparição (confirmado com o
+   usuário antes de implementar). Cada linha vira UM lançamento só: D78 (INSS-Empresa)
+   C10 (banco), valor = total pago — confirmado com o usuário a partir do Livro Diário
+   de junho/2026 (conta 78, não a 241/145 usadas antes).
    ATENÇÃO: os valores de guia (370,60/391,14) são a base de MAIO/2026 — confira se
    ainda são os corretos antes de reprocessar em meses futuros (podem reajustar). */
 const GPS_AUTONOMOS_ORDEM = [
@@ -850,14 +850,13 @@ const GPS_AUTONOMOS_ORDEM = [
 const GPS_VALOR_MAIOR = {nome:"FABIO BELUCCO CAMILO", valorGuia:391.14};
 function buildInssAutonomoEntries(l, nome, valorGuia){
   const totalPago = Math.abs(l.valor);
-  const diferenca = Math.round((totalPago - valorGuia)*100)/100;
+  const diferente = Math.round((totalPago - valorGuia)*100)/100 !== 0;
   const hist = `PAGAMENTO REF. INSS AUTONOMO DO MEMBRO ${nome}`;
-  const negativa = diferenca < 0;
-  const statusOk = negativa ? "Diferença negativa — valor da guia (370,60/391,14) provavelmente desatualizado, confira" : "OK (INSS autônomo, com juros de atraso)";
+  const statusText = diferente
+    ? `Valor pago (R$ ${fmtBRL(totalPago)}) diferente do valor de guia esperado (R$ ${fmtBRL(valorGuia)}) — confira se é atraso/reajuste antes de exportar`
+    : "OK (INSS autônomo)";
   return [
-    {data:l.data, debito:241, credito:null, valor:valorGuia, hist, complemento:null, iniciaLote:1, flag:negativa, statusText:statusOk},
-    {data:l.data, debito:145, credito:null, valor:diferenca, hist, complemento:null, iniciaLote:null, flag:negativa, statusText:statusOk},
-    {data:l.data, debito:null, credito:10, valor:totalPago, hist, complemento:null, iniciaLote:null, flag:false, statusText:"OK (INSS autônomo, com juros de atraso)"},
+    {data:l.data, debito:78, credito:10, valor:totalPago, hist, complemento:null, iniciaLote:1, flag:diferente, statusText},
   ];
 }
 function isDebitoGps(l){ return normalizeText(l.historico).startsWith("DEBITO GPS"); }
