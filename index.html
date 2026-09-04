@@ -476,8 +476,8 @@ const PADROES_SEED = [
   // pro mesmo CPF todo mês. Trava por valorIgual também: o Reginaldo tem OUTROS
   // pagamentos pelo mesmo CPF em valores diferentes (ex. reembolso Hyper Graf), que não
   // podem cair nesse padrão.
-  {keywords:["02654498980"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPresidente", nomeCompleto:"CLEBER RICARDO DA SILVA CANDIDO", ignorar:false},
-  {keywords:["76342000930"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPresidente", nomeCompleto:"REGINALDO KJHELIN COELHO", ignorar:false},
+  {keywords:["02654498980"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPisoEnfermagem", nomeCompleto:"CLEBER RICARDO DA SILVA CANDIDO", ignorar:false},
+  {keywords:["76342000930"], valorIgual:743.00, debito:237, credito:10, histFn:"equiparacaoSalarialPisoEnfermagem", nomeCompleto:"REGINALDO KJHELIN COELHO", ignorar:false},
   // Pensão alimentícia — desconto na folha do funcionário, pago direto pro
   // beneficiário. O extrato traz o CPF de QUEM RECEBE, não do funcionário — por isso o
   // padrão é ancorado no CPF do recebedor, com o nome do funcionário fixo no cadastro.
@@ -687,13 +687,14 @@ const HIST_FUNCOES = {
     const {nome} = extrairCnpjNome(l.historico);
     return `PAGAMENTO REF. ASSESSORIA DE IMPRENSA - ${nome||""}`.trim();
   },
-  // paga sempre no mês seguinte ao mês trabalhado (ex. pagamento em maio se refere à
-  // equiparação de abril) — por isso o histórico cita o mês ANTERIOR ao da linha do
-  // extrato, não o mês do próprio pagamento.
-  equiparacaoSalarialPresidente(l, p){
+  // Equiparação Salarial do Piso de Enfermagem — valor FIXO (R$743,00), diferente da
+  // Verba de Representação Sindical (valor variável, sem padrão cadastrado). Paga
+  // sempre no mês seguinte ao mês trabalhado — por isso o histórico cita o mês
+  // ANTERIOR ao da linha do extrato, não o mês do próprio pagamento.
+  equiparacaoSalarialPisoEnfermagem(l, p){
     const mesAnt = l.data.m===1 ? {m:12, y:l.data.y-1} : {m:l.data.m-1, y:l.data.y};
     const mesAnoStr = `${String(mesAnt.m).padStart(2,"0")}/${mesAnt.y}`;
-    return `PAGAMENTO REF. EQUIPARAÇÃO SALARIAL ${mesAnoStr} DA REMUNERAÇÃO DO PRESIDENTE ${p.nomeCompleto}`;
+    return `PAGAMENTO REF. DIFERENÇA EQUIPARAÇÃO SALARIAL DO PISO DE ENFERMAGEM ${p.nomeCompleto} ${mesAnoStr}`;
   },
   honorariosAdvocaticiosAntecipado(l, p){
     return `PAGAMENTO ANTECIPADO REF. HONORARIOS ADVOCATICIOS - ${p.nomeCompleto}`;
