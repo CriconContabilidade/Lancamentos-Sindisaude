@@ -521,7 +521,10 @@ const PADROES_SEED = [
   // Boleto sem CNPJ/texto na descrição — identificado pelo relatório antigo do
   // cliente como seguro do veículo Boxer placa MGL7939. Sem nada pra extrair da
   // linha do extrato, hist fixo mesmo (ancorado só pelo valor).
-  {keywords:["LIQUIDACAO BOLETO"], valorIgual:504.99, debito:61, credito:10, hist:"PAGAMENTO REF. SEGURO BOXER MGL7939", ignorar:false},
+  // ancorado pelo CNPJ (APROVI/seguradora), não por valor fixo — o valor do seguro
+  // reajusta (ex. R$504,99 em maio, R$505,36 em junho), travar num valorIgual faz o
+  // padrão parar de bater silenciosamente assim que o valor muda.
+  {keywords:["35562597000142"], debito:61, credito:10, hist:"PAGAMENTO REF. SEGURO BOXER MGL7939", ignorar:false},
   {keywords:["97526100059"], debito:266, credito:10, histFn:"convenioOdontologico", ignorar:false},
   // Pagamento indevido pra Sul Online que voltou no mesmo dia via estorno (já
   // cadastrado) — mesmo tratamento de "pagamento de internet" do lado que saiu.
