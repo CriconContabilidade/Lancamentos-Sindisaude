@@ -393,7 +393,14 @@ async function extractPdfAllLines(file){
 const LINHA_RE = /^(\d{2})\/(\d{2})\/(\d{4})\s+(.+?)\s+(-?[\d.]*\d,\d{2})\s+(-?[\d.]*\d,\d{2})$/;
 async function parseExtratoSindisaudeTodos(file){
   const pages = await extractPdfAllLines(file);
-  const allLines = pages.flat();
+  let allLines = pages.flat();
+  // o extrato do Sicredi traz uma seção "Lançamentos Futuros (Próximos 30 dias)" no
+  // final, com movimentações que AINDA NÃO aconteceram (ex. próxima fatura de cartão) —
+  // sem cortar aqui, essa linha futura entra como se já tivesse sido paga e pode casar
+  // por engano com um título de OUTRO fornecedor (aconteceu de verdade: uma fatura
+  // futura de R$257,50 "pagou" um título da Kolina que não tinha nada a ver).
+  const idxFuturos = allLines.findIndex(l=>/Lan[çc]amentos Futuros/i.test(l));
+  if(idxFuturos>=0) allLines = allLines.slice(0, idxFuturos);
   const linhas = [];
   allLines.forEach(line=>{
     const m = line.match(LINHA_RE);
